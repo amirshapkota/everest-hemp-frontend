@@ -59,7 +59,7 @@ const Hero = () => {
             transition={{ duration: 0.8, delay: 1.5 }}
             whileHover={{ scale: 1.05, y: -2 }}
             whileTap={{ scale: 0.98 }}
-            onClick={() => window.location.href = '/women'}
+            onClick={() => window.location.href = '/all-products'}
           >
             Discover Collection
           </motion.button>
