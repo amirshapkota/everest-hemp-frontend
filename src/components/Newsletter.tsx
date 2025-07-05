@@ -15,10 +15,10 @@ const Newsletter = () => {
       {/* Background decoration */}
       <div className="absolute inset-0 opacity-10">
         <div className="absolute top-20 left-20">
-          <img src="/public/logo-nobg.png" alt="" className="h-32 w-32 opacity-30" />
+          <img src="/logo-nobg.png" alt="" className="h-32 w-32 opacity-30" />
         </div>
         <div className="absolute bottom-20 right-20">
-          <img src="/public/logo-nobg.png" alt="" className="h-24 w-24 opacity-20" />
+          <img src="/logo-nobg.png" alt="" className="h-24 w-24 opacity-20" />
         </div>
       </div>
 
@@ -35,7 +35,7 @@ const Newsletter = () => {
             transition={{ duration: 0.3 }}
           >
             <img 
-              src="/public/logo-nobg.png" 
+              src="/logo-nobg.png" 
               alt="Everest Hemp" 
               className="h-18 w-18 sm:h-20 sm:w-20 lg:h-24 lg:w-24 mx-auto opacity-80"
             />

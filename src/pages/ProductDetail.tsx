@@ -158,7 +158,7 @@ const ProductDetail = () => {
               
               <div className="absolute top-4 left-4 lg:top-6 lg:left-6">
                 <img 
-                  src="/public/logo-nobg.png" 
+                  src="/logo-nobg.png" 
                   alt="Everest Hemp" 
                   className="h-10 w-10 sm:h-12 sm:w-12 lg:h-14 lg:w-14 opacity-80"
                 />

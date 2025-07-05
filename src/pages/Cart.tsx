@@ -54,7 +54,7 @@ const Cart = () => {
           transition={{ duration: 0.8 }}
         >
           <img 
-            src="/public/logo-nobg.png" 
+            src="/logo-nobg.png" 
             alt="Everest Hemp" 
             className="h-24 w-24 mx-auto mb-8 opacity-60"
           />
@@ -88,7 +88,7 @@ const Cart = () => {
         >
           <div className="flex items-center space-x-4 mb-12">
             <img 
-              src="/public/logo-nobg.png" 
+              src="/logo-nobg.png" 
               alt="Everest Hemp" 
               className="h-14 w-14 sm:h-16 sm:w-16 lg:h-18 lg:w-18 opacity-80"
             />

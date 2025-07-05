@@ -36,7 +36,7 @@ const ForgotPassword = () => {
               transition={{ duration: 0.6, delay: 0.2 }}
             >
               <img 
-                src="/public/logo-nobg.png" 
+                src="/logo-nobg.png" 
                 alt="Everest Hemp" 
                 className="h-18 w-18 sm:h-20 sm:w-20 lg:h-24 lg:w-24 mx-auto mb-6"
               />

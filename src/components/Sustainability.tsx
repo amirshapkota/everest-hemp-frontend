@@ -54,7 +54,7 @@ const Sustainability = () => {
                 viewport={{ once: true }}
               >
                 <img 
-                  src="/public/logo-nobg.png" 
+                  src="/logo-nobg.png" 
                   alt="Everest Hemp" 
                   className="h-12 w-12 opacity-80"
                 />

@@ -187,7 +187,7 @@ const AllProducts = () => {
             transition={{ duration: 0.8 }}
           >
             <img 
-              src="/public/logo-nobg.png" 
+              src="/logo-nobg.png" 
               alt="Everest Hemp" 
               className="h-20 w-20 sm:h-24 sm:w-24 md:h-28 md:w-28 lg:h-32 lg:w-32 mx-auto opacity-90"
             />
@@ -407,7 +407,7 @@ const AllProducts = () => {
           >
             <div className="mb-6">
               <img 
-                src="/public/logo-nobg.png" 
+                src="/logo-nobg.png" 
                 alt="Everest Hemp" 
                 className="h-20 w-20 sm:h-24 sm:w-24 lg:h-28 lg:w-28 mx-auto opacity-60"
               />

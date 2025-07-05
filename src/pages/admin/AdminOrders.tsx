@@ -166,7 +166,7 @@ const AdminOrders = () => {
           <div className="p-6 border-b border-stone-200 flex items-center justify-between">
             <div className="flex items-center space-x-4">
               <img 
-                src="/public/logo-nobg.png" 
+                src="/logo-nobg.png" 
                 alt="Everest Hemp" 
                 className="h-12 w-12 sm:h-14 sm:w-14 lg:h-16 lg:w-16"
               />
@@ -343,7 +343,7 @@ const AdminOrders = () => {
         >
           <div className="flex items-center space-x-4">
             <img 
-              src="/public/logo-nobg.png" 
+              src="/logo-nobg.png" 
               alt="Everest Hemp" 
               className="h-14 w-14 sm:h-16 sm:w-16 lg:h-18 lg:w-18"
             />

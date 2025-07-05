@@ -55,7 +55,7 @@ const Footer = () => {
           >
             <div className="flex items-center space-x-2 lg:space-x-3 mb-6">
               <motion.img 
-                src="/public/logo-nobg.png" 
+                src="/logo-nobg.png" 
                 alt="Everest Hemp" 
                 className="h-12 w-12 sm:h-14 sm:w-14 lg:h-16 lg:w-16"
                 whileHover={{ scale: 1.1, rotate: 5 }}

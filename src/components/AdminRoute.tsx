@@ -20,7 +20,7 @@ const AdminRoute: React.FC<AdminRouteProps> = ({ children }) => {
           transition={{ duration: 0.5 }}
         >
           <img 
-            src="/public/logo-nobg.png" 
+            src="/logo-nobg.png" 
             alt="Everest Hemp" 
             className="h-20 w-20 sm:h-24 sm:w-24 lg:h-28 lg:w-28 mx-auto mb-4 opacity-80 animate-pulse"
           />

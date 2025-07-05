@@ -41,7 +41,7 @@ const Login = () => {
               transition={{ duration: 0.6, delay: 0.2 }}
             >
               <img 
-                src="/public/logo-nobg.png" 
+                src="/logo-nobg.png" 
                 alt="Everest Hemp" 
                 className="h-16 w-16 sm:h-18 sm:w-18 lg:h-20 lg:w-20 mx-auto mb-4 lg:mb-6"
               />

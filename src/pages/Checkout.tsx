@@ -110,7 +110,7 @@ const Checkout = () => {
         >
           <div className="flex items-center space-x-4 mb-6">
             <img 
-              src="/public/logo-nobg.png" 
+              src="/logo-nobg.png" 
               alt="Everest Hemp" 
               className="h-12 w-12 sm:h-14 sm:w-14 lg:h-16 lg:w-16"
             />

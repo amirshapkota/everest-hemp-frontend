@@ -48,7 +48,7 @@ const AdminAnalytics = () => {
         >
           <div className="flex items-center space-x-4">
             <img 
-              src="/public/logo-nobg.png" 
+              src="/logo-nobg.png" 
               alt="Everest Hemp" 
               className="h-14 w-14 sm:h-16 sm:w-16 lg:h-18 lg:w-18"
             />

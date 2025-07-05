@@ -74,7 +74,7 @@ const SustainabilityPage = () => {
             transition={{ duration: 0.8 }}
           >
             <img 
-              src="/public/logo-nobg.png" 
+              src="/logo-nobg.png" 
               alt="Everest Hemp" 
               className="h-24 w-24 sm:h-28 sm:w-28 md:h-32 md:w-32 lg:h-36 lg:w-36 mx-auto opacity-90"
             />
@@ -218,7 +218,7 @@ const SustainabilityPage = () => {
                 <div className="absolute inset-0 bg-gradient-to-t from-amber-900/30 to-transparent" />
                 <div className="absolute top-6 left-6">
                   <img 
-                    src="/public/logo-nobg.png" 
+                    src="/logo-nobg.png" 
                     alt="Everest Hemp" 
                     className="h-12 w-12 opacity-80"
                   />
@@ -283,7 +283,7 @@ const SustainabilityPage = () => {
             viewport={{ once: true }}
           >
             <img 
-              src="/public/logo-nobg.png" 
+              src="/logo-nobg.png" 
               alt="Everest Hemp" 
               className="h-20 w-20 sm:h-24 sm:w-24 lg:h-28 lg:w-28 mx-auto mb-8 opacity-90"
             />
