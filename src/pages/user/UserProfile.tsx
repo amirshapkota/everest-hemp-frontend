@@ -1,34 +1,70 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { User, Mail, Phone, MapPin, Calendar, Camera, Save } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
 const UserProfile = () => {
   const { user } = useAuth();
-  const [isEditing, setIsEditing] = useState(false);
-  const [formData, setFormData] = useState({
-    name: user?.name || '',
-    email: user?.email || '',
-    phone: '+1 (555) 123-4567',
-    address: '123 Mountain View Drive',
-    city: 'Boulder',
-    state: 'Colorado',
-    zipCode: '80301',
-    birthDate: '1990-01-01'
-  });
+  const [profile, setProfile] = useState<any>(null);
+  const [form, setForm] = useState<any>({});
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    // Handle form submission
-    setIsEditing(false);
-  };
+  useEffect(() => {
+    const fetchProfile = async () => {
+      setLoading(true);
+      setError("");
+      try {
+        const token = localStorage.getItem('token');
+        const res = await fetch(`/api/users/${user?.id}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!res.ok) throw new Error('Failed to fetch profile');
+        const data = await res.json();
+        setProfile(data);
+        setForm({ ...data });
+      } catch (err: any) {
+        setError(err.message || 'Failed to fetch profile');
+      }
+      setLoading(false);
+    };
+    if (user) fetchProfile();
+  }, [user]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
+    const { name, value } = e.target;
+    setForm((prev: any) => ({ ...prev, [name]: value }));
   };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    setError("");
+    setSuccess("");
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`/api/users/${user?.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(form)
+      });
+      if (!res.ok) throw new Error('Failed to update profile');
+      const data = await res.json();
+      setProfile(data);
+      setSuccess('Profile updated successfully!');
+    } catch (err: any) {
+      setError(err.message || 'Failed to update profile');
+    }
+    setSaving(false);
+  };
+
+  if (loading) return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+  if (error) return <div className="min-h-screen flex items-center justify-center text-red-600">{error}</div>;
 
   return (
     <div className="min-h-screen bg-stone-50 pt-20">
@@ -124,12 +160,6 @@ const UserProfile = () => {
                 <h2 className="text-xl font-light text-amber-900 tracking-[0.1em]">
                   Personal Information
                 </h2>
-                <button
-                  onClick={() => setIsEditing(!isEditing)}
-                  className="text-amber-900 hover:text-amber-700 transition-colors text-sm font-medium tracking-[0.05em] uppercase"
-                >
-                  {isEditing ? 'Cancel' : 'Edit'}
-                </button>
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-6">
@@ -143,10 +173,9 @@ const UserProfile = () => {
                       <input
                         type="text"
                         name="name"
-                        value={formData.name}
+                        value={form.name || ''}
                         onChange={handleChange}
-                        disabled={!isEditing}
-                        className="w-full pl-10 pr-4 py-3 border-2 border-stone-300 text-amber-900 placeholder-stone-400 focus:outline-none focus:border-amber-900 transition-colors bg-white disabled:bg-stone-50"
+                        className="w-full pl-10 pr-4 py-3 border-2 border-stone-300 text-amber-900 placeholder-stone-400 focus:outline-none focus:border-amber-900 transition-colors bg-white"
                       />
                     </div>
                   </div>
@@ -160,10 +189,9 @@ const UserProfile = () => {
                       <input
                         type="email"
                         name="email"
-                        value={formData.email}
+                        value={form.email || ''}
                         onChange={handleChange}
-                        disabled={!isEditing}
-                        className="w-full pl-10 pr-4 py-3 border-2 border-stone-300 text-amber-900 placeholder-stone-400 focus:outline-none focus:border-amber-900 transition-colors bg-white disabled:bg-stone-50"
+                        className="w-full pl-10 pr-4 py-3 border-2 border-stone-300 text-amber-900 placeholder-stone-400 focus:outline-none focus:border-amber-900 transition-colors bg-white"
                       />
                     </div>
                   </div>
@@ -177,10 +205,9 @@ const UserProfile = () => {
                       <input
                         type="tel"
                         name="phone"
-                        value={formData.phone}
+                        value={form.phone || ''}
                         onChange={handleChange}
-                        disabled={!isEditing}
-                        className="w-full pl-10 pr-4 py-3 border-2 border-stone-300 text-amber-900 placeholder-stone-400 focus:outline-none focus:border-amber-900 transition-colors bg-white disabled:bg-stone-50"
+                        className="w-full pl-10 pr-4 py-3 border-2 border-stone-300 text-amber-900 placeholder-stone-400 focus:outline-none focus:border-amber-900 transition-colors bg-white"
                       />
                     </div>
                   </div>
@@ -194,10 +221,9 @@ const UserProfile = () => {
                       <input
                         type="date"
                         name="birthDate"
-                        value={formData.birthDate}
+                        value={form.birthDate || ''}
                         onChange={handleChange}
-                        disabled={!isEditing}
-                        className="w-full pl-10 pr-4 py-3 border-2 border-stone-300 text-amber-900 placeholder-stone-400 focus:outline-none focus:border-amber-900 transition-colors bg-white disabled:bg-stone-50"
+                        className="w-full pl-10 pr-4 py-3 border-2 border-stone-300 text-amber-900 placeholder-stone-400 focus:outline-none focus:border-amber-900 transition-colors bg-white"
                       />
                     </div>
                   </div>
@@ -212,10 +238,9 @@ const UserProfile = () => {
                     <input
                       type="text"
                       name="address"
-                      value={formData.address}
+                      value={form.address || ''}
                       onChange={handleChange}
-                      disabled={!isEditing}
-                      className="w-full pl-10 pr-4 py-3 border-2 border-stone-300 text-amber-900 placeholder-stone-400 focus:outline-none focus:border-amber-900 transition-colors bg-white disabled:bg-stone-50"
+                      className="w-full pl-10 pr-4 py-3 border-2 border-stone-300 text-amber-900 placeholder-stone-400 focus:outline-none focus:border-amber-900 transition-colors bg-white"
                     />
                   </div>
                 </div>
@@ -228,10 +253,9 @@ const UserProfile = () => {
                     <input
                       type="text"
                       name="city"
-                      value={formData.city}
+                      value={form.city || ''}
                       onChange={handleChange}
-                      disabled={!isEditing}
-                      className="w-full px-4 py-3 border-2 border-stone-300 text-amber-900 placeholder-stone-400 focus:outline-none focus:border-amber-900 transition-colors bg-white disabled:bg-stone-50"
+                      className="w-full px-4 py-3 border-2 border-stone-300 text-amber-900 placeholder-stone-400 focus:outline-none focus:border-amber-900 transition-colors bg-white"
                     />
                   </div>
 
@@ -242,10 +266,9 @@ const UserProfile = () => {
                     <input
                       type="text"
                       name="state"
-                      value={formData.state}
+                      value={form.state || ''}
                       onChange={handleChange}
-                      disabled={!isEditing}
-                      className="w-full px-4 py-3 border-2 border-stone-300 text-amber-900 placeholder-stone-400 focus:outline-none focus:border-amber-900 transition-colors bg-white disabled:bg-stone-50"
+                      className="w-full px-4 py-3 border-2 border-stone-300 text-amber-900 placeholder-stone-400 focus:outline-none focus:border-amber-900 transition-colors bg-white"
                     />
                   </div>
 
@@ -256,28 +279,29 @@ const UserProfile = () => {
                     <input
                       type="text"
                       name="zipCode"
-                      value={formData.zipCode}
+                      value={form.zipCode || ''}
                       onChange={handleChange}
-                      disabled={!isEditing}
-                      className="w-full px-4 py-3 border-2 border-stone-300 text-amber-900 placeholder-stone-400 focus:outline-none focus:border-amber-900 transition-colors bg-white disabled:bg-stone-50"
+                      className="w-full px-4 py-3 border-2 border-stone-300 text-amber-900 placeholder-stone-400 focus:outline-none focus:border-amber-900 transition-colors bg-white"
                     />
                   </div>
                 </div>
 
-                {isEditing && (
-                  <motion.button
-                    type="submit"
-                    className="w-full bg-amber-900 text-white py-3 text-sm font-medium tracking-[0.1em] uppercase hover:bg-amber-800 transition-all duration-300 shadow-lg hover:shadow-xl flex items-center justify-center space-x-3"
-                    whileHover={{ scale: 1.02, y: -2 }}
-                    whileTap={{ scale: 0.98 }}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.3 }}
-                  >
-                    <Save size={18} />
-                    <span>Save Changes</span>
-                  </motion.button>
-                )}
+                {error && <div className="text-red-600 bg-red-100 border border-red-200 p-2 rounded">{error}</div>}
+                {success && <div className="text-green-700 bg-green-100 border border-green-200 p-2 rounded">{success}</div>}
+
+                <motion.button
+                  type="submit"
+                  className="w-full bg-amber-900 text-white py-3 text-sm font-medium tracking-[0.1em] uppercase hover:bg-amber-800 transition-all duration-300 shadow-lg hover:shadow-xl flex items-center justify-center space-x-3"
+                  whileHover={{ scale: 1.02, y: -2 }}
+                  whileTap={{ scale: 0.98 }}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3 }}
+                  disabled={saving}
+                >
+                  <Save size={18} />
+                  <span>{saving ? 'Saving...' : 'Save Changes'}</span>
+                </motion.button>
               </form>
             </div>
           </motion.div>

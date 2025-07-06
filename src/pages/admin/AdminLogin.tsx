@@ -15,13 +15,12 @@ const AdminLogin = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    
-    // For demo purposes, any email with 'admin' will be treated as admin
-    if (!email.includes('admin')) {
-      setError('Admin access required');
+    // Only allow the real admin email
+    const adminEmail = 'admin@everesthemp.com';
+    if (email.trim().toLowerCase() !== adminEmail) {
+      setError('Only the official admin account can access this portal.');
       return;
     }
-    
     const success = await login(email, password);
     if (success) {
       navigate('/admin/dashboard');
@@ -134,7 +133,7 @@ const AdminLogin = () => {
               transition={{ duration: 0.6, delay: 0.6 }}
             >
               <p className="text-stone-500 text-sm tracking-[0.02em]">
-                Demo: Use any email with 'admin' and any password
+                Only <span className="font-semibold text-amber-900">admin@everesthemp.com</span> can access the admin dashboard.
               </p>
             </motion.div>
           </div>

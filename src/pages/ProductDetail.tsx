@@ -1,51 +1,90 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Heart, ShoppingBag, Star, Truck, Shield, RotateCcw, Leaf, Eye, Share2, MessageCircle } from 'lucide-react';
 import { useParams, Link } from 'react-router-dom';
+import { useCart } from '../context/CartContext';
+import { useAuth } from '../context/AuthContext';
+import NoProductsFound from '../components/NoProductsFound';
 
 const ProductDetail = () => {
   const { id } = useParams();
+  const [product, setProduct] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const [selectedSize, setSelectedSize] = useState('M');
   const [selectedColor, setSelectedColor] = useState('Sage');
   const [quantity, setQuantity] = useState(1);
   const [activeImage, setActiveImage] = useState(0);
   const [showReviews, setShowReviews] = useState(false);
   const [showSizeGuide, setShowSizeGuide] = useState(false);
+  const { addToCart } = useCart();
+  const { user } = useAuth();
+  const [inWishlist, setInWishlist] = useState(false);
+  const [wishlistLoading, setWishlistLoading] = useState(false);
+  const [relatedProducts, setRelatedProducts] = useState<any[]>([]);
 
-  const product = {
-    id: 1,
-    name: "Hemp Blazer",
-    price: "Rs. 289,000",
-    originalPrice: "Rs. 320,000",
-    description: "Crafted from the finest organic hemp fibers, this blazer embodies sustainable luxury. The mountain-inspired design features clean lines and impeccable tailoring, perfect for the modern professional who values both style and environmental responsibility.",
-    images: [
-      "https://images.pexels.com/photos/1656684/pexels-photo-1656684.jpeg?auto=compress&cs=tinysrgb&w=800&h=1000&fit=crop",
-      "https://images.pexels.com/photos/1598505/pexels-photo-1598505.jpeg?auto=compress&cs=tinysrgb&w=800&h=1000&fit=crop",
-      "https://images.pexels.com/photos/1656684/pexels-photo-1656684.jpeg?auto=compress&cs=tinysrgb&w=800&h=1000&fit=crop"
-    ],
-    colors: [
-      { name: "Sage", value: "#87A96B" },
-      { name: "Charcoal", value: "#36454F" },
-      { name: "Cream", value: "#F5F5DC" }
-    ],
-    sizes: ["XS", "S", "M", "L", "XL", "XXL"],
-    rating: 4.8,
-    reviews: 127,
-    features: [
-      "100% Organic Hemp",
-      "Carbon Neutral Production",
-      "Ethically Sourced",
-      "Mountain Crafted"
-    ],
-    care: [
-      "Machine wash cold",
-      "Hang dry",
-      "Iron on low heat",
-      "Dry clean if needed"
-    ],
-    inStock: true,
-    sku: "EH-BLZ-001"
+  // Color name to hex mapping
+  const COLOR_MAP: Record<string, string> = {
+    'Sage': '#87A96B',
+    'Charcoal': '#36454F',
+    'Cream': '#F5F5DC',
+    'Natural': '#F4F1E8',
+    'Terracotta': '#E2725B',
+    'Forest': '#355E3B',
+    'Stone': '#8D7B68',
+    'Olive': '#808000',
+    'Black': '#000000',
+    'Ivory': '#FFFFF0',
+    'Blush': '#DE5D83',
+    'Camel': '#C19A6B',
+    'Navy': '#000080',
+    'White': '#FFFFFF',
+    'Blue': '#0066CC',
+    'Khaki': '#C3B091',
   };
+
+  useEffect(() => {
+    setLoading(true);
+    fetch(`/api/products/${id}`)
+      .then(res => res.json())
+      .then(data => {
+        setProduct(data);
+        setLoading(false);
+        if (data.sizes && data.sizes.length > 0) setSelectedSize(data.sizes[0]);
+        if (data.colors && data.colors.length > 0) setSelectedColor(data.colors[0]);
+        // Fetch related products by category
+        if (data.category) {
+          fetch(`/api/products?category=${encodeURIComponent(data.category)}`)
+            .then(res => res.json())
+            .then(products => {
+              // Exclude the current product
+              setRelatedProducts(products.filter((p: any) => p._id !== data._id).slice(0, 3));
+            });
+        } else {
+          setRelatedProducts([]);
+        }
+      })
+      .catch(() => {
+        setError('Failed to load product');
+        setLoading(false);
+      });
+  }, [id]);
+
+  useEffect(() => {
+    const fetchWishlistStatus = async () => {
+      if (!user || !product?._id) return;
+      try {
+        const token = localStorage.getItem('token');
+        const res = await fetch('/api/wishlist', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        setInWishlist(data.some((item: any) => item._id === product._id));
+      } catch {}
+    };
+    fetchWishlistStatus();
+  }, [user, product?._id]);
 
   const reviews = [
     {
@@ -74,35 +113,51 @@ const ProductDetail = () => {
     }
   ];
 
-  const relatedProducts = [
-    {
-      id: 2,
-      name: "Organic Cotton Dress",
-      price: "Rs. 189,000",
-      image: "https://images.pexels.com/photos/1598505/pexels-photo-1598505.jpeg?auto=compress&cs=tinysrgb&w=400&h=500&fit=crop"
-    },
-    {
-      id: 3,
-      name: "Hemp Trousers",
-      price: "Rs. 159,000",
-      image: "https://images.pexels.com/photos/1656684/pexels-photo-1656684.jpeg?auto=compress&cs=tinysrgb&w=400&h=500&fit=crop"
-    },
-    {
-      id: 4,
-      name: "Sustainable Cardigan",
-      price: "Rs. 129,000",
-      image: "https://images.pexels.com/photos/1598505/pexels-photo-1598505.jpeg?auto=compress&cs=tinysrgb&w=400&h=500&fit=crop"
-    }
-  ];
-
   const handleAddToCart = () => {
-    console.log('Added to cart:', { id: product.id, size: selectedSize, color: selectedColor, quantity });
-    // Add to cart logic
+    if (!product) return;
+    addToCart({
+      product: product._id || product.id || id,
+      name: product.name,
+      price: product.price,
+      image: product.images?.[0] || '',
+      color: selectedColor,
+      size: selectedSize,
+      quantity
+    });
   };
 
-  const handleAddToWishlist = () => {
-    console.log('Added to wishlist:', product.id);
-    // Add to wishlist logic
+  const handleAddToWishlist = async () => {
+    if (!user || !product?._id) return;
+    setWishlistLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch('/api/wishlist', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ productId: product._id })
+      });
+      if (res.ok) setInWishlist(true);
+    } finally {
+      setWishlistLoading(false);
+    }
+  };
+
+  const handleRemoveFromWishlist = async () => {
+    if (!user || !product?._id) return;
+    setWishlistLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`/api/wishlist/${product._id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) setInWishlist(false);
+    } finally {
+      setWishlistLoading(false);
+    }
   };
 
   const handleShare = () => {
@@ -118,6 +173,20 @@ const ProductDetail = () => {
     }
   };
 
+  // Map product colors to objects for rendering
+  const mappedColors = (product?.colors || []).map((c: string) => {
+    // If it's a hex code, use as value
+    if (/^#([0-9A-F]{3}){1,2}$/i.test(c)) {
+      return { name: c, value: c };
+    }
+    // If it's a known color name, map to hex
+    if (COLOR_MAP[c]) {
+      return { name: c, value: COLOR_MAP[c] };
+    }
+    // Fallback: use as both name and value
+    return { name: c, value: c };
+  });
+
   return (
     <div className="min-h-screen bg-stone-50 pt-20">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-12">
@@ -131,9 +200,15 @@ const ProductDetail = () => {
           <div className="flex items-center space-x-2 text-sm text-stone-600">
             <Link to="/" className="hover:text-amber-900 transition-colors">Home</Link>
             <span>/</span>
-            <Link to="/women" className="hover:text-amber-900 transition-colors">Women</Link>
-            <span>/</span>
-            <span className="text-amber-900">{product.name}</span>
+            {product?.category && (
+              <>
+                <Link to={`/${(product.category || '').toLowerCase()}`} className="hover:text-amber-900 transition-colors">
+                  {product.category}
+                </Link>
+                <span>/</span>
+              </>
+            )}
+            <span className="text-amber-900">{product?.name}</span>
           </div>
         </motion.nav>
 
@@ -147,8 +222,8 @@ const ProductDetail = () => {
           >
             <div className="relative overflow-hidden bg-white shadow-2xl">
               <motion.img
-                src={product.images[activeImage]}
-                alt={product.name}
+                src={product?.images[activeImage]}
+                alt={product?.name}
                 className="w-full h-80 sm:h-96 lg:h-[600px] object-cover"
                 key={activeImage}
                 initial={{ opacity: 0, scale: 1.1 }}
@@ -189,7 +264,7 @@ const ProductDetail = () => {
             </div>
 
             <div className="grid grid-cols-3 gap-2 lg:gap-4">
-              {product.images.map((image, index) => (
+              {product?.images.map((image: any, index: any) => (
                 <motion.button
                   key={index}
                   onClick={() => setActiveImage(index)}
@@ -201,7 +276,7 @@ const ProductDetail = () => {
                 >
                   <img
                     src={image}
-                    alt={`${product.name} ${index + 1}`}
+                    alt={`${product?.name} ${index + 1}`}
                     className="w-full h-20 lg:h-24 object-cover"
                   />
                 </motion.button>
@@ -224,8 +299,8 @@ const ProductDetail = () => {
                 transition={{ duration: 0.6, delay: 0.4 }}
               >
                 <div className="flex items-center space-x-2">
-                  <span className="text-xs text-stone-500 tracking-[0.1em] uppercase">SKU: {product.sku}</span>
-                  {product.inStock && (
+                  <span className="text-xs text-stone-500 tracking-[0.1em] uppercase">SKU: {product?.sku}</span>
+                  {product?.inStock && (
                     <span className="bg-green-100 text-green-800 px-2 py-1 text-xs font-medium tracking-[0.05em] uppercase">
                       In Stock
                     </span>
@@ -246,7 +321,7 @@ const ProductDetail = () => {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: 0.4 }}
               >
-                {product.name}
+                {product?.name}
               </motion.h1>
               
               <motion.div 
@@ -256,16 +331,16 @@ const ProductDetail = () => {
                 transition={{ duration: 0.6, delay: 0.5 }}
               >
                 <span className="text-2xl lg:text-3xl font-medium text-amber-900 tracking-[0.05em]">
-                  {product.price}
+                  {product?.price}
                 </span>
-                {product.originalPrice && (
+                {product?.originalPrice && (
                   <span className="text-lg lg:text-xl text-stone-400 line-through">
-                    {product.originalPrice}
+                    {product?.originalPrice}
                   </span>
                 )}
-                {product.originalPrice && (
+                {product?.originalPrice && (
                   <span className="bg-red-100 text-red-800 px-2 py-1 text-xs font-medium tracking-[0.05em] uppercase">
-                    Save Rs. {(parseInt(product.originalPrice.replace(/[^0-9]/g, '')) - parseInt(product.price.replace(/[^0-9]/g, ''))).toLocaleString()}
+                    Save Rs. {(parseInt(product?.originalPrice.replace(/[^0-9]/g, '')) - parseInt(product?.price.replace(/[^0-9]/g, ''))).toLocaleString()}
                   </span>
                 )}
               </motion.div>
@@ -282,13 +357,13 @@ const ProductDetail = () => {
                       key={i}
                       size={14}
                       className={`${
-                        i < Math.floor(product.rating) ? 'text-amber-400 fill-current' : 'text-stone-300'
+                        i < Math.floor(product?.rating) ? 'text-amber-400 fill-current' : 'text-stone-300'
                       }`}
                     />
                   ))}
                 </div>
                 <span className="text-sm text-stone-600">
-                  {product.rating} ({product.reviews} reviews)
+                  {product?.rating} ({product?.reviews} reviews)
                 </span>
                 <motion.button
                   onClick={() => setShowReviews(!showReviews)}
@@ -305,7 +380,7 @@ const ProductDetail = () => {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: 0.7 }}
               >
-                {product.description}
+                {product?.description}
               </motion.p>
             </div>
 
@@ -319,7 +394,7 @@ const ProductDetail = () => {
                 Color: {selectedColor}
               </h3>
               <div className="flex space-x-2 lg:space-x-3">
-                {product.colors.map((color) => (
+                {mappedColors.map((color: any) => (
                   <motion.button
                     key={color.name}
                     onClick={() => setSelectedColor(color.name)}
@@ -345,7 +420,7 @@ const ProductDetail = () => {
                 Size: {selectedSize}
               </h3>
               <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 lg:gap-3">
-                {product.sizes.map((size) => (
+                {product?.sizes.map((size: any) => (
                   <motion.button
                     key={size}
                     onClick={() => setSelectedSize(size)}
@@ -404,14 +479,17 @@ const ProductDetail = () => {
                   <span>Add to Cart</span>
                 </motion.button>
                 
-                <motion.button 
-                  onClick={handleAddToWishlist}
-                  className="sm:w-auto w-full p-3 lg:p-4 border-2 border-amber-900 text-amber-900 hover:bg-amber-50 transition-colors flex items-center justify-center"
+                <motion.button
+                  onClick={inWishlist ? handleRemoveFromWishlist : handleAddToWishlist}
+                  disabled={wishlistLoading}
+                  className={`sm:w-auto w-full p-3 lg:p-4 border-2 ${inWishlist ? 'bg-amber-900 text-white border-amber-900' : 'border-amber-900 text-amber-900 hover:bg-amber-50'} transition-colors flex items-center justify-center`}
                   whileHover={{ scale: 1.1 }}
                   whileTap={{ scale: 0.95 }}
                 >
-                  <Heart size={16} className="lg:w-[18px] lg:h-[18px]" />
-                  <span className="ml-2 sm:hidden text-xs uppercase tracking-[0.1em]">Add to Wishlist</span>
+                  <Heart size={16} className="lg:w-[18px] lg:h-[18px]" fill={inWishlist ? '#fff' : 'none'} />
+                  <span className="ml-2 sm:hidden text-xs uppercase tracking-[0.1em]">
+                    {inWishlist ? 'Remove from Wishlist' : 'Add to Wishlist'}
+                  </span>
                 </motion.button>
               </div>
 
@@ -439,7 +517,7 @@ const ProductDetail = () => {
                 Features
               </h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 lg:gap-4">
-                {product.features.map((feature, index) => (
+                {product?.features.map((feature: any, index: any) => (
                   <div key={index} className="flex items-center space-x-2 lg:space-x-3">
                     <Leaf size={14} className="text-amber-900 lg:w-4 lg:h-4" />
                     <span className="text-sm text-stone-600">{feature}</span>
@@ -532,37 +610,41 @@ const ProductDetail = () => {
           <h2 className="text-2xl lg:text-3xl font-light text-amber-900 mb-6 lg:mb-8 tracking-[0.1em]">
             You Might Also Like
           </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {relatedProducts.map((relatedProduct, index) => (
-              <motion.div
-                key={relatedProduct.id}
-                className="group cursor-pointer bg-white shadow-lg hover:shadow-2xl transition-all duration-500"
-                initial={{ opacity: 0, y: 30 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: index * 0.1 }}
-                whileHover={{ y: -10 }}
-              >
-                <Link to={`/product/${relatedProduct.id}`}>
-                  <div className="relative overflow-hidden">
-                    <img
-                      src={relatedProduct.image}
-                      alt={relatedProduct.name}
-                      className="w-full h-64 lg:h-80 object-cover group-hover:scale-105 transition-transform duration-500"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-amber-900/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                  </div>
-                  <div className="p-4 lg:p-6">
-                    <h3 className="text-lg font-light text-amber-900 mb-2 tracking-[0.05em]">
-                      {relatedProduct.name}
-                    </h3>
-                    <p className="text-lg font-medium text-amber-900">
-                      {relatedProduct.price}
-                    </p>
-                  </div>
-                </Link>
-              </motion.div>
-            ))}
-          </div>
+          {relatedProducts.length === 0 ? (
+            <NoProductsFound message="No related products found in this category." />
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {relatedProducts.map((relatedProduct: any, index: number) => (
+                <motion.div
+                  key={relatedProduct._id}
+                  className="group cursor-pointer bg-white shadow-lg hover:shadow-2xl transition-all duration-500"
+                  initial={{ opacity: 0, y: 30 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.6, delay: index * 0.1 }}
+                  whileHover={{ y: -10 }}
+                >
+                  <Link to={`/product/${relatedProduct._id}`}>
+                    <div className="relative overflow-hidden">
+                      <img
+                        src={relatedProduct.images?.[0] || '/placeholder.jpg'}
+                        alt={relatedProduct.name}
+                        className="w-full h-64 lg:h-80 object-cover group-hover:scale-105 transition-transform duration-500"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-amber-900/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                    </div>
+                    <div className="p-4 lg:p-6">
+                      <h3 className="text-lg font-light text-amber-900 mb-2 tracking-[0.05em]">
+                        {relatedProduct.name}
+                      </h3>
+                      <p className="text-lg font-medium text-amber-900">
+                        Rs. {relatedProduct.price?.toLocaleString()}
+                      </p>
+                    </div>
+                  </Link>
+                </motion.div>
+              ))}
+            </div>
+          )}
         </motion.div>
       </div>
     </div>

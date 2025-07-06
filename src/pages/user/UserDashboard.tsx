@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { Package, Heart, User, ShoppingBag, Truck, Star } from 'lucide-react';
@@ -6,12 +6,54 @@ import { useAuth } from '../../context/AuthContext';
 
 const UserDashboard = () => {
   const { user } = useAuth();
+  const [orders, setOrders] = useState<any[]>([]);
+  const [wishlist, setWishlist] = useState<any[]>([]);
+  const [profile, setProfile] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true);
+      setError("");
+      try {
+        const token = localStorage.getItem('token');
+        const [ordersRes, wishlistRes, profileRes] = await Promise.all([
+          fetch(`/api/orders/user/${user?.id}`, { headers: { 'Authorization': `Bearer ${token}` } }),
+          fetch('/api/wishlist', { headers: { 'Authorization': `Bearer ${token}` } }),
+          fetch(`/api/users/${user?.id}`, { headers: { 'Authorization': `Bearer ${token}` } })
+        ]);
+        if (!ordersRes.ok) throw new Error('Failed to fetch orders');
+        if (!wishlistRes.ok) throw new Error('Failed to fetch wishlist');
+        if (!profileRes.ok) throw new Error('Failed to fetch profile');
+        const ordersData = await ordersRes.json();
+        const wishlistData = await wishlistRes.json();
+        const profileData = await profileRes.json();
+        setOrders(ordersData);
+        setWishlist(wishlistData);
+        setProfile(profileData);
+      } catch (err: any) {
+        setError(err.message || 'Failed to fetch dashboard data');
+      }
+      setLoading(false);
+    };
+    if (user) fetchData();
+  }, [user]);
+
+  if (loading) return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+  if (error) return <div className="min-h-screen flex items-center justify-center text-red-600">{error}</div>;
+
+  // Compute stats
+  const totalOrders = orders.length;
+  const wishlistItems = wishlist.length;
+  const loyaltyPoints = profile?.loyaltyPoints || '—';
+  const activeOrders = orders.filter((o: any) => o.status !== 'Delivered').length;
 
   const stats = [
-    { label: 'Total Orders', value: '12', icon: Package, color: 'bg-blue-500' },
-    { label: 'Wishlist Items', value: '8', icon: Heart, color: 'bg-red-500' },
-    { label: 'Loyalty Points', value: '2,450', icon: Star, color: 'bg-amber-500' },
-    { label: 'Active Orders', value: '2', icon: Truck, color: 'bg-green-500' }
+    { label: 'Total Orders', value: totalOrders, icon: Package, color: 'bg-blue-500' },
+    { label: 'Wishlist Items', value: wishlistItems, icon: Heart, color: 'bg-red-500' },
+    { label: 'Loyalty Points', value: loyaltyPoints, icon: Star, color: 'bg-amber-500' },
+    { label: 'Active Orders', value: activeOrders, icon: Truck, color: 'bg-green-500' }
   ];
 
   const quickActions = [
@@ -21,11 +63,14 @@ const UserDashboard = () => {
     { title: 'Continue Shopping', description: 'Browse our collections', icon: ShoppingBag, link: '/women', color: 'bg-green-50 text-green-700' }
   ];
 
-  const recentOrders = [
-    { id: '#EH001', date: '2024-01-15', status: 'Delivered', total: 'Rs. 289,000', items: 'Hemp Blazer' },
-    { id: '#EH002', date: '2024-01-10', status: 'Shipped', total: 'Rs. 189,000', items: 'Organic Cotton Dress' },
-    { id: '#EH003', date: '2024-01-05', status: 'Processing', total: 'Rs. 159,000', items: 'Hemp Trousers' }
-  ];
+  // Show up to 3 most recent orders
+  const recentOrders = orders.slice(0, 3).map((order: any) => ({
+    id: order._id,
+    date: order.createdAt ? new Date(order.createdAt).toLocaleDateString() : '-',
+    status: order.status,
+    total: `Rs. ${order.total?.toLocaleString() || 0}`,
+    items: order.items && order.items.length > 0 ? order.items.map((i: any) => i.name).join(', ') : '—'
+  }));
 
   return (
     <div className="min-h-screen bg-stone-50 pt-20">
@@ -67,7 +112,7 @@ const UserDashboard = () => {
             <motion.div
               key={stat.label}
               className="bg-white p-3 lg:p-6 shadow-lg border border-stone-200"
-              whileHover={{ y: -5, shadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)' }}
+              whileHover={{ y: -5 }}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.4, delay: index * 0.1 }}
@@ -144,7 +189,9 @@ const UserDashboard = () => {
             <div className="bg-white shadow-lg border border-stone-200">
               <div className="p-4 lg:p-6">
                 <div className="space-y-3 lg:space-y-4">
-                  {recentOrders.map((order, index) => (
+                  {recentOrders.length === 0 ? (
+                    <div className="text-stone-400 text-center">No recent orders found.</div>
+                  ) : recentOrders.map((order, index) => (
                     <motion.div
                       key={order.id}
                       className="border-b border-stone-200 last:border-b-0 pb-3 lg:pb-4 last:pb-0"
@@ -173,9 +220,9 @@ const UserDashboard = () => {
                         <p className="text-sm text-stone-600">
                           {order.items}
                         </p>
-                      <p className="text-sm font-medium text-amber-900">
-                        {order.total}
-                      </p>
+                        <p className="text-sm font-medium text-amber-900">
+                          {order.total}
+                        </p>
                       </div>
                     </motion.div>
                   ))}

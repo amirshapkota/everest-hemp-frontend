@@ -1,25 +1,44 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { TrendingUp, DollarSign, Package, Users, ShoppingBag, Star } from 'lucide-react';
 
 const AdminAnalytics = () => {
-  const metrics = [
-    { label: 'Revenue', value: 'Rs. 12,489,000', change: '+12.5%', trend: 'up', icon: DollarSign },
-    { label: 'Orders', value: '1,247', change: '+8.2%', trend: 'up', icon: Package },
-    { label: 'Customers', value: '892', change: '+15.3%', trend: 'up', icon: Users },
-    { label: 'Avg Order Value', value: 'Rs. 15,600', change: '-2.1%', trend: 'down', icon: ShoppingBag },
-    { label: 'Conversion Rate', value: '3.2%', change: '+0.8%', trend: 'up', icon: TrendingUp },
-    { label: 'Customer Rating', value: '4.8', change: '+0.2', trend: 'up', icon: Star }
-  ];
+  const [metrics, setMetrics] = useState<any>(null);
+  const [recentOrders, setRecentOrders] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [topProducts, setTopProducts] = useState<any[]>([]);
 
-  const topProducts = [
-    { name: 'Hemp Blazer', sales: 156, revenue: 45084000, growth: '+23%' },
-    { name: 'Organic Cotton Dress', sales: 134, revenue: 25326000, growth: '+18%' },
-    { name: 'Hemp Trousers', sales: 98, revenue: 15582000, growth: '+12%' },
-    { name: 'Sustainable Cardigan', sales: 87, revenue: 11223000, growth: '+8%' },
-    { name: 'Hemp Silk Blouse', sales: 76, revenue: 7524000, growth: '+15%' }
-  ];
+  useEffect(() => {
+    const fetchAnalytics = async () => {
+      setLoading(true);
+      setError("");
+      try {
+        const token = localStorage.getItem('token');
+        const res = await fetch('/api/analytics/summary', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!res.ok) throw new Error('Failed to fetch analytics');
+        const data = await res.json();
+        setMetrics({
+          revenue: data.totalSales,
+          orders: data.totalOrders,
+          users: data.totalUsers,
+          productsSold: data.totalProductsSold || 0,
+          categories: data.totalCategories || 0,
+          avgOrderValue: data.totalOrders ? Math.round(data.totalSales / data.totalOrders) : 0,
+        });
+        setRecentOrders(data.recentOrders || []);
+        setTopProducts(data.topProducts || []);
+      } catch (err: any) {
+        setError(err.message || 'Failed to fetch analytics');
+      }
+      setLoading(false);
+    };
+    fetchAnalytics();
+  }, []);
 
+  // Static data for now (top products, salesData, customer segments)
   const salesData = [
     { month: 'Jan', sales: 4500000 },
     { month: 'Feb', sales: 5200000 },
@@ -34,8 +53,10 @@ const AdminAnalytics = () => {
     { month: 'Nov', sales: 9200000 },
     { month: 'Dec', sales: 9800000 }
   ];
-
   const maxSales = Math.max(...salesData.map(d => d.sales));
+
+  if (loading) return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+  if (error) return <div className="min-h-screen flex items-center justify-center text-red-600">{error}</div>;
 
   return (
     <div className="min-h-screen bg-stone-50 pt-20">
@@ -70,31 +91,108 @@ const AdminAnalytics = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.2 }}
         >
-          {metrics.map((metric, index) => (
-            <motion.div
-              key={metric.label}
-              className="bg-white p-6 shadow-lg border border-stone-200"
-              whileHover={{ y: -5, shadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)' }}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, delay: index * 0.1 }}
-            >
-              <div className="flex items-center justify-between mb-4">
-                <metric.icon size={24} className="text-amber-900" />
-                <span className={`text-sm font-medium ${
-                  metric.trend === 'up' ? 'text-green-600' : 'text-red-600'
-                }`}>
-                  {metric.change}
-                </span>
-              </div>
-              <p className="text-2xl font-light text-amber-900 mb-1">
-                {metric.value}
-              </p>
-              <p className="text-xs text-stone-600 uppercase tracking-[0.05em]">
-                {metric.label}
-              </p>
-            </motion.div>
-          ))}
+          <motion.div
+            className="bg-white p-6 shadow-lg border border-stone-200"
+            whileHover={{ y: -5 }}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0 }}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <DollarSign size={24} className="text-amber-900" />
+            </div>
+            <p className="text-2xl font-light text-amber-900 mb-1">
+              Rs. {metrics?.revenue?.toLocaleString() || 0}
+            </p>
+            <p className="text-xs text-stone-600 uppercase tracking-[0.05em]">
+              Revenue
+            </p>
+          </motion.div>
+          <motion.div
+            className="bg-white p-6 shadow-lg border border-stone-200"
+            whileHover={{ y: -5 }}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.1 }}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <Package size={24} className="text-amber-900" />
+            </div>
+            <p className="text-2xl font-light text-amber-900 mb-1">
+              {metrics?.orders?.toLocaleString() || 0}
+            </p>
+            <p className="text-xs text-stone-600 uppercase tracking-[0.05em]">
+              Orders
+            </p>
+          </motion.div>
+          <motion.div
+            className="bg-white p-6 shadow-lg border border-stone-200"
+            whileHover={{ y: -5 }}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.2 }}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <Users size={24} className="text-amber-900" />
+            </div>
+            <p className="text-2xl font-light text-amber-900 mb-1">
+              {metrics?.users?.toLocaleString() || 0}
+            </p>
+            <p className="text-xs text-stone-600 uppercase tracking-[0.05em]">
+              Customers
+            </p>
+          </motion.div>
+          <motion.div
+            className="bg-white p-6 shadow-lg border border-stone-200"
+            whileHover={{ y: -5 }}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.3 }}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <ShoppingBag size={24} className="text-amber-900" />
+            </div>
+            <p className="text-2xl font-light text-amber-900 mb-1">
+              {metrics?.productsSold?.toLocaleString() || 0}
+            </p>
+            <p className="text-xs text-stone-600 uppercase tracking-[0.05em]">
+              Products Sold
+            </p>
+          </motion.div>
+          <motion.div
+            className="bg-white p-6 shadow-lg border border-stone-200"
+            whileHover={{ y: -5 }}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.4 }}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <Star size={24} className="text-amber-900" />
+            </div>
+            <p className="text-2xl font-light text-amber-900 mb-1">
+              {metrics?.categories?.toLocaleString() || 0}
+            </p>
+            <p className="text-xs text-stone-600 uppercase tracking-[0.05em]">
+              Categories
+            </p>
+          </motion.div>
+          <motion.div
+            className="bg-white p-6 shadow-lg border border-stone-200"
+            whileHover={{ y: -5 }}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.5 }}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <TrendingUp size={24} className="text-amber-900" />
+            </div>
+            <p className="text-2xl font-light text-amber-900 mb-1">
+              Rs. {metrics?.avgOrderValue?.toLocaleString() || 0}
+            </p>
+            <p className="text-xs text-stone-600 uppercase tracking-[0.05em]">
+              Avg Order Value
+            </p>
+          </motion.div>
         </motion.div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -144,9 +242,11 @@ const AdminAnalytics = () => {
               Top Products
             </h2>
             <div className="space-y-4">
-              {topProducts.map((product, index) => (
+              {topProducts.length === 0 ? (
+                <div className="text-stone-400 text-center">No top products found.</div>
+              ) : topProducts.map((product, index) => (
                 <motion.div
-                  key={product.name}
+                  key={product.productId || product.name}
                   className="flex items-center justify-between p-4 border border-stone-200 hover:bg-stone-50 transition-colors"
                   initial={{ opacity: 0, x: 20 }}
                   animate={{ opacity: 1, x: 0 }}
@@ -157,105 +257,51 @@ const AdminAnalytics = () => {
                       {product.name}
                     </h3>
                     <p className="text-sm text-stone-600">
-                      {product.sales} sales • Rs. {product.revenue.toLocaleString()} revenue
+                      {product.sales} sales • Rs. {product.revenue?.toLocaleString() || 0} revenue
                     </p>
                   </div>
-                  <span className="text-sm font-medium text-green-600">
-                    {product.growth}
-                  </span>
                 </motion.div>
               ))}
             </div>
           </motion.div>
         </div>
 
-        {/* Additional Analytics */}
+        {/* Recent Orders from backend */}
         <motion.div
-          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mt-8"
+          className="bg-white p-6 shadow-lg border border-stone-200 mt-8"
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.8 }}
         >
-          {/* Customer Segments */}
-          <div className="bg-white p-6 shadow-lg border border-stone-200">
-            <h3 className="text-xl font-light text-amber-900 mb-6 tracking-[0.1em]">
-              Customer Segments
-            </h3>
-            <div className="space-y-4">
-              <div className="flex justify-between items-center">
-                <span className="text-stone-600">VIP Customers</span>
-                <span className="font-medium text-amber-900">15%</span>
-              </div>
-              <div className="w-full bg-stone-200 h-2">
-                <div className="bg-amber-900 h-2" style={{ width: '15%' }}></div>
-              </div>
-              
-              <div className="flex justify-between items-center">
-                <span className="text-stone-600">Regular Customers</span>
-                <span className="font-medium text-amber-900">65%</span>
-              </div>
-              <div className="w-full bg-stone-200 h-2">
-                <div className="bg-amber-700 h-2" style={{ width: '65%' }}></div>
-              </div>
-              
-              <div className="flex justify-between items-center">
-                <span className="text-stone-600">New Customers</span>
-                <span className="font-medium text-amber-900">20%</span>
-              </div>
-              <div className="w-full bg-stone-200 h-2">
-                <div className="bg-amber-500 h-2" style={{ width: '20%' }}></div>
-              </div>
-            </div>
-          </div>
-
-          {/* Traffic Sources */}
-          <div className="bg-white p-6 shadow-lg border border-stone-200">
-            <h3 className="text-xl font-light text-amber-900 mb-6 tracking-[0.1em]">
-              Traffic Sources
-            </h3>
-            <div className="space-y-4">
-              <div className="flex justify-between items-center">
-                <span className="text-stone-600">Organic Search</span>
-                <span className="font-medium text-amber-900">45%</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-stone-600">Social Media</span>
-                <span className="font-medium text-amber-900">25%</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-stone-600">Direct</span>
-                <span className="font-medium text-amber-900">20%</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-stone-600">Email</span>
-                <span className="font-medium text-amber-900">10%</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Recent Activity */}
-          <div className="bg-white p-6 shadow-lg border border-stone-200">
-            <h3 className="text-xl font-light text-amber-900 mb-6 tracking-[0.1em]">
-              Recent Activity
-            </h3>
-            <div className="space-y-4">
-              <div className="flex items-center space-x-3">
-                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                <span className="text-sm text-stone-600">New order #EH001</span>
-              </div>
-              <div className="flex items-center space-x-3">
-                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                <span className="text-sm text-stone-600">Product review submitted</span>
-              </div>
-              <div className="flex items-center space-x-3">
-                <div className="w-2 h-2 bg-amber-500 rounded-full"></div>
-                <span className="text-sm text-stone-600">Inventory alert: Hemp Trousers</span>
-              </div>
-              <div className="flex items-center space-x-3">
-                <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
-                <span className="text-sm text-stone-600">New customer registered</span>
-              </div>
-            </div>
+          <h2 className="text-2xl font-light text-amber-900 mb-6 tracking-[0.1em]">
+            Recent Orders
+          </h2>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-stone-50 border-b border-stone-200">
+                <tr>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-stone-500 uppercase tracking-wider">Order ID</th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-stone-500 uppercase tracking-wider">Customer</th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-stone-500 uppercase tracking-wider">Total</th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-stone-500 uppercase tracking-wider">Date</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-stone-200">
+                {recentOrders.map((order) => (
+                  <tr key={order._id} className="hover:bg-stone-50 transition-colors">
+                    <td className="px-6 py-4 whitespace-nowrap text-amber-900 font-mono text-xs">{order._id}</td>
+                    <td className="px-6 py-4 whitespace-nowrap">{order.user?.name || 'N/A'}<br /><span className="text-xs text-stone-500">{order.user?.email}</span></td>
+                    <td className="px-6 py-4 whitespace-nowrap">Rs. {order.total?.toLocaleString() || 0}</td>
+                    <td className="px-6 py-4 whitespace-nowrap">{order.createdAt ? new Date(order.createdAt).toLocaleDateString() : '-'}</td>
+                  </tr>
+                ))}
+                {recentOrders.length === 0 && (
+                  <tr>
+                    <td colSpan={4} className="text-center py-8 text-stone-400">No recent orders found.</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
           </div>
         </motion.div>
       </div>

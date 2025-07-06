@@ -1,50 +1,18 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { motion } from 'framer-motion';
 import { Minus, Plus, X, ShoppingBag, ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useCart } from '../context/CartContext';
 
 const Cart = () => {
-  const [cartItems, setCartItems] = useState([
-    {
-      id: 1,
-      name: "Hemp Blazer",
-      price: 289000,
-      image: "https://images.pexels.com/photos/1656684/pexels-photo-1656684.jpeg?auto=compress&cs=tinysrgb&w=400&h=500&fit=crop",
-      color: "Sage",
-      size: "M",
-      quantity: 1
-    },
-    {
-      id: 2,
-      name: "Organic Cotton Dress",
-      price: 189000,
-      image: "https://images.pexels.com/photos/1598505/pexels-photo-1598505.jpeg?auto=compress&cs=tinysrgb&w=400&h=500&fit=crop",
-      color: "Natural",
-      size: "S",
-      quantity: 2
-    }
-  ]);
+  const { cart, updateQuantity, removeFromCart } = useCart();
 
-  const updateQuantity = (id: number, newQuantity: number) => {
-    if (newQuantity === 0) {
-      setCartItems(cartItems.filter(item => item.id !== id));
-    } else {
-      setCartItems(cartItems.map(item => 
-        item.id === id ? { ...item, quantity: newQuantity } : item
-      ));
-    }
-  };
-
-  const removeItem = (id: number) => {
-    setCartItems(cartItems.filter(item => item.id !== id));
-  };
-
-  const subtotal = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
   const shipping = subtotal > 50000 ? 0 : 5000;
   const tax = subtotal * 0.13;
   const total = subtotal + shipping + tax;
 
-  if (cartItems.length === 0) {
+  if (cart.length === 0) {
     return (
       <div className="min-h-screen bg-stone-50 pt-20 flex items-center justify-center">
         <motion.div 
@@ -101,9 +69,9 @@ const Cart = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
           {/* Cart Items */}
           <div className="lg:col-span-2 space-y-4 lg:space-y-6">
-            {cartItems.map((item, index) => (
+            {cart.map((item, index) => (
               <motion.div
-                key={item.id}
+                key={item.product + item.size + item.color}
                 className="bg-white p-4 lg:p-6 shadow-lg hover:shadow-xl transition-all duration-300"
                 initial={{ opacity: 0, y: 50 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -127,14 +95,14 @@ const Cart = () => {
                       <p>Size: {item.size}</p>
                     </div>
                     <p className="text-base lg:text-lg font-medium text-amber-900 mt-3">
-                      $ {item.price.toLocaleString()}
+                      Rs. {item.price.toLocaleString()}
                     </p>
                   </div>
 
                   <div className="flex items-center justify-center sm:justify-end space-x-4">
                     <div className="flex items-center space-x-2 lg:space-x-3">
                       <motion.button
-                        onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                        onClick={() => updateQuantity(item.product, item.size, item.color, Math.max(1, item.quantity - 1))}
                         className="w-7 h-7 lg:w-8 lg:h-8 border border-stone-300 text-amber-900 hover:bg-amber-50 transition-colors flex items-center justify-center text-sm"
                         whileHover={{ scale: 1.1 }}
                         whileTap={{ scale: 0.95 }}
@@ -145,7 +113,7 @@ const Cart = () => {
                         {item.quantity}
                       </span>
                       <motion.button
-                        onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                        onClick={() => updateQuantity(item.product, item.size, item.color, item.quantity + 1)}
                         className="w-7 h-7 lg:w-8 lg:h-8 border border-stone-300 text-amber-900 hover:bg-amber-50 transition-colors flex items-center justify-center text-sm"
                         whileHover={{ scale: 1.1 }}
                         whileTap={{ scale: 0.95 }}
@@ -155,7 +123,7 @@ const Cart = () => {
                     </div>
 
                     <motion.button
-                      onClick={() => removeItem(item.id)}
+                      onClick={() => removeFromCart(item.product, item.size, item.color)}
                       className="p-1.5 lg:p-2 text-stone-400 hover:text-red-500 transition-colors"
                       whileHover={{ scale: 1.1 }}
                       whileTap={{ scale: 0.95 }}

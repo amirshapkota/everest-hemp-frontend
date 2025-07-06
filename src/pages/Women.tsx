@@ -1,71 +1,37 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Filter, Grid, List, Heart } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
+import { useCategories } from '../context/CategoryContext';
+import NoProductsFound from '../components/NoProductsFound';
 
-const products = [
-  {
-    id: 1,
-    name: "Hemp Blazer",
-    price: "Rs. 289,000",
-    originalPrice: "Rs. 320,000",
-    image: "https://images.pexels.com/photos/1656684/pexels-photo-1656684.jpeg?auto=compress&cs=tinysrgb&w=600&h=800&fit=crop",
-    category: "Blazers",
-    isNew: true,
-    colors: ["Sage", "Charcoal", "Cream"]
-  },
-  {
-    id: 2,
-    name: "Organic Cotton Dress",
-    price: "Rs. 189,000",
-    image: "https://images.pexels.com/photos/1598505/pexels-photo-1598505.jpeg?auto=compress&cs=tinysrgb&w=600&h=800&fit=crop",
-    category: "Dresses",
-    colors: ["Natural", "Terracotta", "Forest"]
-  },
-  {
-    id: 3,
-    name: "Hemp Trousers",
-    price: "Rs. 159,000",
-    image: "https://images.pexels.com/photos/1656684/pexels-photo-1656684.jpeg?auto=compress&cs=tinysrgb&w=600&h=800&fit=crop",
-    category: "Trousers",
-    colors: ["Stone", "Olive", "Black"]
-  },
-  {
-    id: 4,
-    name: "Sustainable Cardigan",
-    price: "Rs. 129,000",
-    image: "https://images.pexels.com/photos/1598505/pexels-photo-1598505.jpeg?auto=compress&cs=tinysrgb&w=600&h=800&fit=crop",
-    category: "Knitwear",
-    colors: ["Cream", "Camel", "Sage"]
-  },
-  {
-    id: 5,
-    name: "Hemp Silk Blouse",
-    price: "Rs. 99,000",
-    image: "https://images.pexels.com/photos/1656684/pexels-photo-1656684.jpeg?auto=compress&cs=tinysrgb&w=600&h=800&fit=crop",
-    category: "Blouses",
-    colors: ["Ivory", "Blush", "Sage"]
-  },
-  {
-    id: 6,
-    name: "Organic Wool Coat",
-    price: "Rs. 389,000",
-    image: "https://images.pexels.com/photos/1598505/pexels-photo-1598505.jpeg?auto=compress&cs=tinysrgb&w=600&h=800&fit=crop",
-    category: "Outerwear",
-    colors: ["Camel", "Charcoal", "Cream"]
-  }
-];
-
-const categories = ["All", "Blazers", "Dresses", "Trousers", "Knitwear", "Blouses", "Outerwear"];
 const sortOptions = ["Featured", "Price: Low to High", "Price: High to Low", "Newest"];
 
 const Women = () => {
+  const { categories, loading: categoriesLoading } = useCategories();
+  const [products, setProducts] = useState<any[]>([]);
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [sortBy, setSortBy] = useState("Featured");
   const [viewMode, setViewMode] = useState("grid");
   const [showFilters, setShowFilters] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const location = useLocation();
   
+  useEffect(() => {
+    setLoading(true);
+    fetch('/api/products')
+      .then(res => res.json())
+      .then(data => {
+        setProducts(data.filter((p: any) => p.collection === 'Women'));
+        setLoading(false);
+      })
+      .catch(() => {
+        setError('Failed to load products');
+        setLoading(false);
+      });
+  }, []);
+
   // Get search query from URL params
   const searchParams = new URLSearchParams(location.search);
   const searchQuery = searchParams.get('q') || '';
@@ -74,7 +40,7 @@ const Women = () => {
     const matchesCategory = selectedCategory === "All" || product.category === selectedCategory;
     const matchesSearch = !searchQuery || 
       product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      product.category.toLowerCase().includes(searchQuery.toLowerCase());
+      (product.category && product.category.toLowerCase().includes(searchQuery.toLowerCase()));
     return matchesCategory && matchesSearch;
   });
 
@@ -137,19 +103,19 @@ const Women = () => {
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-8 lg:mb-12 space-y-6 lg:space-y-0">
           {/* Category Filters */}
           <div className="flex flex-wrap gap-2 lg:gap-4 w-full lg:w-auto">
-            {categories.map((category) => (
+            {categories.map((cat) => (
               <motion.button
-                key={category}
-                onClick={() => setSelectedCategory(category)}
+                key={cat.name}
+                onClick={() => setSelectedCategory(cat.name)}
                 className={`px-3 lg:px-6 py-2 lg:py-3 text-xs lg:text-sm font-medium tracking-[0.1em] uppercase transition-all duration-300 ${
-                  selectedCategory === category
+                  selectedCategory === cat.name
                     ? 'bg-amber-900 text-white shadow-lg'
                     : 'bg-white text-amber-900 border border-amber-900 hover:bg-amber-50'
                 }`}
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.98 }}
               >
-                {category}
+                {cat.name}
               </motion.button>
             ))}
           </div>
@@ -200,89 +166,56 @@ const Women = () => {
           }`}
           layout
         >
-          {filteredProducts.map((product, index) => (
-            <motion.div
-              key={product.id}
-              className="group cursor-pointer bg-white shadow-lg hover:shadow-2xl transition-all duration-500"
-              initial={{ opacity: 0, y: 50 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: index * 0.1 }}
-              whileHover={{ y: -10 }}
-              layout
-            >
-              <Link to={`/product/${product.id}`}>
-                <div className="relative overflow-hidden">
-                  {product.isNew && (
-                    <div className="absolute top-2 left-2 lg:top-4 lg:left-4 bg-amber-900 text-white px-2 lg:px-3 py-1 text-xs tracking-[0.1em] uppercase z-10">
-                      New
-                    </div>
-                  )}
-                  
-                  <motion.button 
-                    className="absolute top-2 right-2 lg:top-4 lg:right-4 p-2 lg:p-3 bg-white/90 backdrop-blur-sm rounded-full opacity-0 group-hover:opacity-100 transition-all duration-300 hover:bg-amber-50 shadow-lg z-10"
-                    whileHover={{ scale: 1.1 }}
-                    whileTap={{ scale: 0.95 }}
-                  >
-                    <Heart size={14} className="text-amber-900 lg:w-4 lg:h-4" />
-                  </motion.button>
-
-                  <motion.img
-                    src={product.image}
-                    alt={product.name}
-                    className="w-full h-64 sm:h-80 lg:h-96 object-cover"
-                    whileHover={{ scale: 1.08 }}
-                    transition={{ duration: 0.6 }}
-                  />
-                  
-                  <div className="absolute inset-0 bg-gradient-to-t from-amber-900/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                </div>
-
-                <div className="p-3 lg:p-6">
-                  <p className="text-xs text-stone-500 mb-2 tracking-[0.15em] uppercase">
-                    {product.category}
-                  </p>
-                  <h3 className="text-sm lg:text-lg font-light text-amber-900 mb-2 lg:mb-3 tracking-[0.05em] line-clamp-2">
-                    {product.name}
-                  </h3>
-                  
-                  <div className="flex items-center space-x-2 lg:space-x-3 mb-3 lg:mb-4">
-                    <span className="text-sm lg:text-lg font-medium text-amber-900 tracking-[0.05em]">
-                      {product.price}
-                    </span>
-                    {product.originalPrice && (
-                      <span className="text-xs lg:text-sm text-stone-400 line-through">
-                        {product.originalPrice}
-                      </span>
+          {filteredProducts.length > 0 && (
+            filteredProducts.map((product, index) => (
+              <motion.div
+                key={product._id}
+                className="group cursor-pointer bg-white shadow-lg hover:shadow-2xl transition-all duration-500"
+                initial={{ opacity: 0, y: 50 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: index * 0.1 }}
+                whileHover={{ y: -10 }}
+                layout
+              >
+                <Link to={`/product/${product._id}`}>
+                  <div className="relative overflow-hidden">
+                    {product.isNew && (
+                      <div className="absolute top-4 left-4 bg-amber-900 text-white px-3 py-1 text-xs tracking-[0.1em] uppercase z-10">
+                        New
+                      </div>
                     )}
+                    <motion.button 
+                      className="absolute top-4 right-4 p-3 bg-white/90 backdrop-blur-sm rounded-full opacity-0 group-hover:opacity-100 transition-all duration-300 hover:bg-amber-50 shadow-lg z-10"
+                      whileHover={{ scale: 1.1 }}
+                      whileTap={{ scale: 0.95 }}
+                    >
+                      <Heart size={16} className="text-amber-900" />
+                    </motion.button>
+                    <motion.img
+                      src={product.images?.[0]}
+                      alt={product.name}
+                      className="w-full h-96 object-cover"
+                      whileHover={{ scale: 1.08 }}
+                      transition={{ duration: 0.6 }}
+                    />
                   </div>
-
-                  <div className="flex space-x-1 lg:space-x-2">
-                    {product.colors.map((color, colorIndex) => (
-                      <div
-                        key={colorIndex}
-                        className="w-3 h-3 lg:w-4 lg:h-4 rounded-full border border-stone-300"
-                        style={{
-                          backgroundColor: color === "Sage" ? "#87A96B" :
-                                         color === "Charcoal" ? "#36454F" :
-                                         color === "Cream" ? "#F5F5DC" :
-                                         color === "Natural" ? "#F4F1E8" :
-                                         color === "Terracotta" ? "#E2725B" :
-                                         color === "Forest" ? "#355E3B" :
-                                         color === "Stone" ? "#8D7B68" :
-                                         color === "Olive" ? "#808000" :
-                                         color === "Black" ? "#000000" :
-                                         color === "Ivory" ? "#FFFFF0" :
-                                         color === "Blush" ? "#DE5D83" :
-                                         color === "Camel" ? "#C19A6B" : "#F5F5DC"
-                        }}
-                      />
-                    ))}
+                  <div className="p-4">
+                    <p className="text-xs text-stone-500 mb-2 tracking-[0.15em] uppercase">
+                      {product.category}
+                    </p>
+                    <h3 className="text-base lg:text-lg font-light text-amber-900 mb-2 tracking-[0.05em]">
+                      {product.name}
+                    </h3>
+                    <p className="text-base lg:text-lg font-medium text-amber-900 tracking-[0.05em]">
+                      Rs. {product.price?.toLocaleString()}
+                    </p>
                   </div>
-                </div>
-              </Link>
-            </motion.div>
-          ))}
+                </Link>
+              </motion.div>
+            ))
+          )}
         </motion.div>
+        {filteredProducts.length === 0 && <NoProductsFound />}
 
         {/* Load More */}
         <motion.div 

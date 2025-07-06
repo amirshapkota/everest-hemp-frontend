@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { 
@@ -14,27 +14,57 @@ import {
 } from 'lucide-react';
 
 const AdminDashboard = () => {
+  const [metrics, setMetrics] = useState<any>(null);
+  const [recentOrders, setRecentOrders] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    const fetchAnalytics = async () => {
+      setLoading(true);
+      setError("");
+      try {
+        const token = localStorage.getItem('token');
+        const res = await fetch('/api/analytics/summary', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!res.ok) throw new Error('Failed to fetch analytics');
+        const data = await res.json();
+        setMetrics({
+          revenue: data.totalSales,
+          orders: data.totalOrders,
+          users: data.totalUsers,
+          products: data.totalProducts || 0,
+          categories: data.totalCategories || 0,
+          newOrdersToday: data.newOrdersToday || 0,
+          revenueToday: data.revenueToday || 0,
+          newCustomersToday: data.newCustomersToday || 0,
+        });
+        setRecentOrders(data.recentOrders || []);
+      } catch (err: any) {
+        setError(err.message || 'Failed to fetch analytics');
+      }
+      setLoading(false);
+    };
+    fetchAnalytics();
+  }, []);
+
+  if (loading) return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+  if (error) return <div className="min-h-screen flex items-center justify-center text-red-600">{error}</div>;
+
   const stats = [
-    { label: 'Total Revenue', value: 'Rs. 12,489,000', change: '+12.5%', icon: DollarSign, color: 'bg-green-500' },
-    { label: 'Total Orders', value: '1,247', change: '+8.2%', icon: Package, color: 'bg-blue-500' },
-    { label: 'Total Customers', value: '892', change: '+15.3%', icon: Users, color: 'bg-purple-500' },
-    { label: 'Products Sold', value: '2,156', change: '+6.7%', icon: ShoppingBag, color: 'bg-amber-500' }
+    { label: 'Total Revenue', value: `Rs. ${metrics?.revenue?.toLocaleString() || 0}`, change: '+12.5%', icon: DollarSign, color: 'bg-green-500' },
+    { label: 'Total Orders', value: metrics?.orders?.toLocaleString() || 0, change: '+8.2%', icon: Package, color: 'bg-blue-500' },
+    { label: 'Total Customers', value: metrics?.users?.toLocaleString() || 0, change: '+15.3%', icon: Users, color: 'bg-purple-500' },
+    { label: 'Total Products', value: metrics?.products?.toLocaleString() || 0, change: '+6.7%', icon: ShoppingBag, color: 'bg-amber-500' }
   ];
 
   const quickActions = [
-    { title: 'Manage Orders', description: 'View and process customer orders', icon: Package, link: '/admin/orders', color: 'bg-blue-50 text-blue-700', stats: '24 pending' },
-    { title: 'Product Catalog', description: 'Add and edit product inventory', icon: ShoppingBag, link: '/admin/products', color: 'bg-green-50 text-green-700', stats: '156 products' },
-    { title: 'Customer Management', description: 'View and manage customers', icon: Users, link: '/admin/customers', color: 'bg-purple-50 text-purple-700', stats: '892 customers' },
+    { title: 'Manage Orders', description: 'View and process customer orders', icon: Package, link: '/admin/orders', color: 'bg-blue-50 text-blue-700', stats: `${metrics?.orders || 0} total` },
+    { title: 'Product Catalog', description: 'Add and edit product inventory', icon: ShoppingBag, link: '/admin/products', color: 'bg-green-50 text-green-700', stats: `${metrics?.products || 0} sold` },
+    { title: 'Customer Management', description: 'View and manage customers', icon: Users, link: '/admin/customers', color: 'bg-purple-50 text-purple-700', stats: `${metrics?.users || 0} customers` },
     { title: 'Analytics Dashboard', description: 'Sales and performance metrics', icon: TrendingUp, link: '/admin/analytics', color: 'bg-amber-50 text-amber-700', stats: 'View reports' },
-    { title: 'Category Management', description: 'Organize product categories', icon: Star, link: '/admin/categories', color: 'bg-indigo-50 text-indigo-700', stats: '10 categories' }
-  ];
-
-  const recentOrders = [
-    { id: '#EH001', customer: 'Sarah Johnson', amount: 'Rs. 289,000', status: 'Processing', date: '2024-01-15' },
-    { id: '#EH002', customer: 'Michael Chen', amount: 'Rs. 189,000', status: 'Shipped', date: '2024-01-15' },
-    { id: '#EH003', customer: 'Emma Wilson', amount: 'Rs. 348,000', status: 'Delivered', date: '2024-01-14' },
-    { id: '#EH004', customer: 'David Brown', amount: 'Rs. 129,000', status: 'Processing', date: '2024-01-14' },
-    { id: '#EH005', customer: 'Lisa Garcia', amount: 'Rs. 215,000', status: 'Shipped', date: '2024-01-13' }
+    { title: 'Category Management', description: 'Organize product categories', icon: Star, link: '/admin/categories', color: 'bg-indigo-50 text-indigo-700', stats: '' }
   ];
 
   const alerts = [
@@ -81,7 +111,7 @@ const AdminDashboard = () => {
             <motion.div
               key={stat.label}
               className="bg-white p-6 shadow-lg border border-stone-200"
-              whileHover={{ y: -5, shadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)' }}
+              whileHover={{ y: -5 }}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.4, delay: index * 0.1 }}
@@ -166,11 +196,11 @@ const AdminDashboard = () => {
               </h2>
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
                 {[
-                  { name: 'Orders', icon: Package, link: '/admin/orders', count: '24' },
-                  { name: 'Products', icon: ShoppingBag, link: '/admin/products', count: '156' },
-                  { name: 'Customers', icon: Users, link: '/admin/customers', count: '892' },
+                  { name: 'Orders', icon: Package, link: '/admin/orders', count: `${metrics?.orders || 0}` },
+                  { name: 'Products', icon: ShoppingBag, link: '/admin/products', count: `${metrics?.products || 0}` },
+                  { name: 'Customers', icon: Users, link: '/admin/customers', count: `${metrics?.users || 0}` },
                   { name: 'Analytics', icon: TrendingUp, link: '/admin/analytics', count: 'Reports' },
-                  { name: 'Categories', icon: Star, link: '/admin/categories', count: '10' }
+                  { name: 'Categories', icon: Star, link: '/admin/categories', count: `${metrics?.categories || 0}` }
                 ].map((tool, index) => (
                   <motion.div
                     key={tool.name}
@@ -209,31 +239,51 @@ const AdminDashboard = () => {
                 Today's Overview
               </h2>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-                {[
-                  { label: 'New Orders', value: '8', change: '+12%', color: 'text-blue-600' },
-                  { label: 'Revenue Today', value: 'Rs. 1,245,000', change: '+8%', color: 'text-green-600' },
-                  { label: 'New Customers', value: '3', change: '+25%', color: 'text-purple-600' }
-                ].map((stat, index) => (
-                  <motion.div
-                    key={stat.label}
-                    className="bg-white p-6 shadow-lg border border-stone-200"
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.4, delay: 1.3 + index * 0.1 }}
-                  >
-                    <h3 className="text-sm text-stone-600 tracking-[0.05em] uppercase mb-2">
-                      {stat.label}
-                    </h3>
-                    <div className="flex items-center justify-between">
-                      <span className="text-2xl font-light text-amber-900">
-                        {stat.value}
-                      </span>
-                      <span className={`text-sm font-medium ${stat.color}`}>
-                        {stat.change}
-                      </span>
-                    </div>
-                  </motion.div>
-                ))}
+                <motion.div
+                  className="bg-white p-6 shadow-lg border border-stone-200"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.4, delay: 1.3 }}
+                >
+                  <h3 className="text-sm text-stone-600 tracking-[0.05em] uppercase mb-2">
+                    New Orders
+                  </h3>
+                  <div className="flex items-center justify-between">
+                    <span className="text-2xl font-light text-amber-900">
+                      {metrics?.newOrdersToday || 0}
+                    </span>
+                  </div>
+                </motion.div>
+                <motion.div
+                  className="bg-white p-6 shadow-lg border border-stone-200"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.4, delay: 1.4 }}
+                >
+                  <h3 className="text-sm text-stone-600 tracking-[0.05em] uppercase mb-2">
+                    Revenue Today
+                  </h3>
+                  <div className="flex items-center justify-between">
+                    <span className="text-2xl font-light text-amber-900">
+                      Rs. {metrics?.revenueToday?.toLocaleString() || 0}
+                    </span>
+                  </div>
+                </motion.div>
+                <motion.div
+                  className="bg-white p-6 shadow-lg border border-stone-200"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.4, delay: 1.5 }}
+                >
+                  <h3 className="text-sm text-stone-600 tracking-[0.05em] uppercase mb-2">
+                    New Customers
+                  </h3>
+                  <div className="flex items-center justify-between">
+                    <span className="text-2xl font-light text-amber-900">
+                      {metrics?.newCustomersToday || 0}
+                    </span>
+                  </div>
+                </motion.div>
               </div>
             </div>
           </motion.div>
@@ -259,9 +309,11 @@ const AdminDashboard = () => {
             <div className="bg-white shadow-lg border border-stone-200">
               <div className="p-6">
                 <div className="space-y-4">
-                  {recentOrders.map((order, index) => (
+                  {recentOrders.length === 0 ? (
+                    <div className="text-stone-400 text-center">No recent orders found.</div>
+                  ) : recentOrders.map((order, index) => (
                     <motion.div
-                      key={order.id}
+                      key={order._id}
                       className="border-b border-stone-200 last:border-b-0 pb-4 last:pb-0 group"
                       initial={{ opacity: 0, x: 20 }}
                       animate={{ opacity: 1, x: 0 }}
@@ -270,10 +322,10 @@ const AdminDashboard = () => {
                       <div className="flex justify-between items-start mb-2">
                         <div>
                           <p className="font-medium text-amber-900 text-sm tracking-[0.05em]">
-                            {order.id}
+                            {order._id}
                           </p>
                           <p className="text-xs text-stone-500">
-                            {order.customer}
+                            {order.user?.name || 'N/A'}
                           </p>
                         </div>
                         <div className="flex items-center space-x-2">
@@ -294,10 +346,10 @@ const AdminDashboard = () => {
                       </div>
                       <div className="flex justify-between items-center">
                         <p className="text-sm font-medium text-amber-900">
-                          {order.amount}
+                          Rs. {order.total?.toLocaleString() || 0}
                         </p>
                         <p className="text-xs text-stone-500">
-                          {order.date}
+                          {order.createdAt ? new Date(order.createdAt).toLocaleDateString() : '-'}
                         </p>
                       </div>
                     </motion.div>

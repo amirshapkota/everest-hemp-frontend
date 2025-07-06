@@ -1,69 +1,52 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
+import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Search, Edit, Trash2, Eye, Package } from 'lucide-react';
 
 const AdminProducts = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const [products, setProducts] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('All');
   const [showAddModal, setShowAddModal] = useState(false);
-  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [selectedProduct, setSelectedProduct] = useState<any>(null);
   const [showViewModal, setShowViewModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [categories, setCategories] = useState<string[]>(['All']);
 
-  const products = [
-    {
-      id: 1,
-      name: 'Hemp Blazer',
-      category: 'Blazers',
-      price: 289000,
-      stock: 15,
-      status: 'Active',
-      image: 'https://images.pexels.com/photos/1656684/pexels-photo-1656684.jpeg?auto=compress&cs=tinysrgb&w=200&h=250&fit=crop',
-      sku: 'EH-BLZ-001',
-      colors: ['Sage', 'Charcoal', 'Cream'],
-      sizes: ['XS', 'S', 'M', 'L', 'XL']
-    },
-    {
-      id: 2,
-      name: 'Organic Cotton Dress',
-      category: 'Dresses',
-      price: 189000,
-      stock: 8,
-      status: 'Active',
-      image: 'https://images.pexels.com/photos/1598505/pexels-photo-1598505.jpeg?auto=compress&cs=tinysrgb&w=200&h=250&fit=crop',
-      sku: 'EH-DRS-002',
-      colors: ['Natural', 'Terracotta', 'Forest'],
-      sizes: ['XS', 'S', 'M', 'L', 'XL']
-    },
-    {
-      id: 3,
-      name: 'Hemp Trousers',
-      category: 'Trousers',
-      price: 159000,
-      stock: 3,
-      status: 'Low Stock',
-      image: 'https://images.pexels.com/photos/1656684/pexels-photo-1656684.jpeg?auto=compress&cs=tinysrgb&w=200&h=250&fit=crop',
-      sku: 'EH-TRS-003',
-      colors: ['Stone', 'Olive', 'Black'],
-      sizes: ['XS', 'S', 'M', 'L', 'XL']
-    },
-    {
-      id: 4,
-      name: 'Sustainable Cardigan',
-      category: 'Knitwear',
-      price: 129000,
-      stock: 0,
-      status: 'Out of Stock',
-      image: 'https://images.pexels.com/photos/1598505/pexels-photo-1598505.jpeg?auto=compress&cs=tinysrgb&w=200&h=250&fit=crop',
-      sku: 'EH-CDG-004',
-      colors: ['Cream', 'Camel', 'Sage'],
-      sizes: ['XS', 'S', 'M', 'L', 'XL']
-    }
-  ];
-
-  const categories = ['All', 'Blazers', 'Dresses', 'Trousers', 'Knitwear', 'Blouses', 'Outerwear'];
+  useEffect(() => {
+    const fetchProducts = async () => {
+      setLoading(true);
+      setError("");
+      try {
+        const token = localStorage.getItem('token');
+        const res = await fetch('/api/products', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!res.ok) throw new Error('Failed to fetch products');
+        const data = await res.json();
+        setProducts(data);
+      } catch (err: any) {
+        setError(err.message || 'Failed to fetch products');
+      }
+      setLoading(false);
+    };
+    const fetchCategories = async () => {
+      try {
+        const res = await fetch('/api/categories');
+        if (!res.ok) throw new Error('Failed to fetch categories');
+        const data = await res.json();
+        setCategories(['All', ...data.map((c: any) => c.name)]);
+      } catch {}
+    };
+    fetchProducts();
+    fetchCategories();
+  }, []);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -74,413 +57,499 @@ const AdminProducts = () => {
     }
   };
 
-  const handleViewProduct = (product) => {
+  const handleViewProduct = (product: any) => {
     setSelectedProduct(product);
     setShowViewModal(true);
   };
 
-  const handleEditProduct = (product) => {
+  const handleEditProduct = (product: any) => {
     setSelectedProduct(product);
     setShowEditModal(true);
   };
 
-  const handleDeleteProduct = (productId) => {
-    if (confirm('Are you sure you want to delete this product?')) {
-      console.log('Deleting product:', productId);
-      // Here you would typically call an API to delete the product
-      // For now, we'll just show an alert
-      alert('Product deleted successfully!');
+  const handleDeleteProduct = async (productId: string) => {
+    if (!window.confirm('Are you sure you want to delete this product?')) return;
+    setSaving(true);
+    setError("");
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`/api/products/${productId}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (!res.ok) throw new Error('Failed to delete product');
+      setProducts((prev) => prev.filter(p => p._id !== productId));
+    } catch (err: any) {
+      setError(err.message || 'Failed to delete product');
     }
+    setSaving(false);
   };
 
   const filteredProducts = products.filter(product => {
     const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         product.sku.toLowerCase().includes(searchTerm.toLowerCase());
+                         product.sku?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategory = categoryFilter === 'All' || product.category === categoryFilter;
     return matchesSearch && matchesCategory;
   });
 
-  const AddProductModal = () => (
-    <motion.div
-      className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-    >
-      <motion.div
-        className="bg-white max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl"
-        initial={{ scale: 0.9, y: 50 }}
-        animate={{ scale: 1, y: 0 }}
-        exit={{ scale: 0.9, y: 50 }}
-      >
-        <div className="p-6 border-b border-stone-200">
-          <h2 className="text-2xl font-light text-amber-900 tracking-[0.1em]">
-            Add New Product
-          </h2>
-        </div>
-        
-        <div className="p-6">
-          <form className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-amber-900 mb-2">
-                  Product Name
-                </label>
-                <input
-                  type="text"
-                  className="w-full px-4 py-3 border border-stone-300 focus:outline-none focus:border-amber-900 transition-colors"
-                  placeholder="Enter product name"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-amber-900 mb-2">
-                  SKU
-                </label>
-                <input
-                  type="text"
-                  className="w-full px-4 py-3 border border-stone-300 focus:outline-none focus:border-amber-900 transition-colors"
-                  placeholder="EH-XXX-000"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-amber-900 mb-2">
-                  Category
-                </label>
-                <select className="w-full px-4 py-3 border border-stone-300 focus:outline-none focus:border-amber-900 transition-colors">
-                  {categories.slice(1).map(category => (
-                    <option key={category} value={category}>{category}</option>
-                  ))}
-                </select>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-amber-900 mb-2">
-                  Price ($)
-                </label>
-                <input
-                  type="number"
-                  className="w-full px-4 py-3 border border-stone-300 focus:outline-none focus:border-amber-900 transition-colors"
-                  placeholder="0.00"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-amber-900 mb-2">
-                  Stock Quantity
-                </label>
-                <input
-                  type="number"
-                  className="w-full px-4 py-3 border border-stone-300 focus:outline-none focus:border-amber-900 transition-colors"
-                  placeholder="0"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-amber-900 mb-2">
-                  Status
-                </label>
-                <select className="w-full px-4 py-3 border border-stone-300 focus:outline-none focus:border-amber-900 transition-colors">
-                  <option value="Active">Active</option>
-                  <option value="Draft">Draft</option>
-                  <option value="Inactive">Inactive</option>
-                </select>
-              </div>
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-amber-900 mb-2">
-                Description
-              </label>
-              <textarea
-                rows={4}
-                className="w-full px-4 py-3 border border-stone-300 focus:outline-none focus:border-amber-900 transition-colors resize-none"
-                placeholder="Product description..."
-              />
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-amber-900 mb-2">
-                Product Images
-              </label>
-              <div className="border-2 border-dashed border-stone-300 p-8 text-center">
-                <p className="text-stone-500">Drag and drop images here or click to browse</p>
-              </div>
-            </div>
-          </form>
-        </div>
-        
-        <div className="p-6 border-t border-stone-200 flex justify-end space-x-4">
-          <button
-            onClick={() => setShowAddModal(false)}
-            className="px-6 py-2 border border-stone-300 text-stone-700 hover:bg-stone-50 transition-colors"
-          >
-            Cancel
-          </button>
-          <button className="px-6 py-2 bg-amber-900 text-white hover:bg-amber-800 transition-colors">
-            Add Product
-          </button>
-        </div>
-      </motion.div>
-    </motion.div>
-  );
+  const AddProductModal = () => {
+    const initialForm = {
+      name: '',
+      description: '',
+      price: '',
+      images: [''],
+      category: categories[1] || '',
+      collection: 'Women',
+      colors: '',
+      sizes: '',
+      inStock: true,
+      sku: '',
+      status: 'Active',
+    };
+    const [form, setForm] = useState(initialForm);
+    const [error, setError] = useState('');
+    const [saving, setSaving] = useState(false);
 
-  const ViewProductModal = () => {
-    if (!selectedProduct) return null;
-    
+    // Reset form and error when modal opens
+    React.useEffect(() => {
+      setForm(initialForm);
+      setError('');
+    }, [showAddModal]);
+
+    // Close modal on Escape key
+    React.useEffect(() => {
+      const handleKeyDown = (e: KeyboardEvent) => {
+        if (e.key === 'Escape') setShowAddModal(false);
+      };
+      if (showAddModal) {
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+      }
+    }, [showAddModal]);
+
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+      const { name, value, type } = e.target;
+      if (type === 'checkbox') {
+        setForm(f => ({ ...f, [name]: (e.target as HTMLInputElement).checked }));
+      } else {
+        setForm(f => ({ ...f, [name]: value }));
+      }
+    };
+
+    const handleImageChange = (idx: number, value: string) => {
+      setForm(f => {
+        const images = [...f.images];
+        images[idx] = value;
+        return { ...f, images };
+      });
+    };
+
+    const addImageField = () => setForm(f => ({ ...f, images: [...f.images, ''] }));
+    const removeImageField = (idx: number) => setForm(f => ({ ...f, images: f.images.filter((_, i) => i !== idx) }));
+
+    const handleBackgroundClick = (e: React.MouseEvent) => {
+      if (e.target === e.currentTarget) setShowAddModal(false);
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+      e.preventDefault();
+      setSaving(true);
+      setError('');
+      // Basic validation
+      if (!form.name.trim() || !form.price || !form.category) {
+        setError('Name, price, and category are required.');
+        setSaving(false);
+        return;
+      }
+      try {
+        const token = localStorage.getItem('token');
+        const res = await fetch('/api/products', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            ...form,
+            price: Number(form.price),
+            colors: form.colors.split(',').map((c: string) => c.trim()).filter(Boolean),
+            sizes: form.sizes.split(',').map((s: string) => s.trim()).filter(Boolean),
+          })
+        });
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.message || 'Failed to add product');
+        }
+        const newProduct = await res.json();
+        setProducts(prev => [newProduct, ...prev]);
+        setShowAddModal(false);
+      } catch (err: any) {
+        setError(err.message || 'Failed to add product');
+      }
+      setSaving(false);
+    };
+
     return (
-      <motion.div
-        className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        onClick={() => setShowViewModal(false)}
-      >
-        <motion.div
-          className="bg-white max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl"
-          initial={{ scale: 0.9, y: 50 }}
-          animate={{ scale: 1, y: 0 }}
-          exit={{ scale: 0.9, y: 50 }}
-          onClick={(e) => e.stopPropagation()}
-        >
-          <div className="p-6 border-b border-stone-200">
-            <h2 className="text-2xl font-light text-amber-900 tracking-[0.1em]">
-              Product Details
-            </h2>
+      <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50" onClick={handleBackgroundClick}>
+        <form onSubmit={handleSubmit} className="bg-white max-w-lg w-full p-8 rounded shadow-lg relative overflow-y-auto max-h-[90vh]" onClick={e => e.stopPropagation()}>
+          {/* Modal Header */}
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-2xl font-light text-amber-900">Add Product</h2>
+            <button type="button" onClick={() => setShowAddModal(false)} className="p-2 rounded-full hover:bg-stone-100 transition-colors" aria-label="Close">
+              <span aria-hidden="true">&times;</span>
+            </button>
           </div>
-          
-          <div className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {error && <div className="text-red-600 mb-4">{error}</div>}
+          <div className="grid grid-cols-1 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-amber-900 mb-1">Name *</label>
+              <input name="name" value={form.name} onChange={handleChange} required placeholder="Product name" className="border px-4 py-2 w-full" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-amber-900 mb-1">Description</label>
+              <textarea name="description" value={form.description} onChange={handleChange} placeholder="Description" className="border px-4 py-2 w-full" />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
               <div>
-                <img
-                  src={selectedProduct.image}
-                  alt={selectedProduct.name}
-                  className="w-full h-64 object-cover mb-4"
-                />
+                <label className="block text-sm font-medium text-amber-900 mb-1">Price (Rs) *</label>
+                <input name="price" value={form.price} onChange={handleChange} required placeholder="Price" type="number" min="0" className="border px-4 py-2 w-full" />
               </div>
-              
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-amber-900 mb-1">Product Name</label>
-                  <p className="text-stone-700">{selectedProduct.name}</p>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-amber-900 mb-1">SKU</label>
-                  <p className="text-stone-700">{selectedProduct.sku}</p>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-amber-900 mb-1">Category</label>
-                  <p className="text-stone-700">{selectedProduct.category}</p>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-amber-900 mb-1">Price</label>
-                  <p className="text-stone-700">Rs. {selectedProduct.price.toLocaleString()}</p>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-amber-900 mb-1">Stock</label>
-                  <p className="text-stone-700">{selectedProduct.stock} units</p>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-amber-900 mb-1">Status</label>
-                  <span className={`px-2 py-1 text-xs font-medium tracking-[0.05em] uppercase ${getStatusColor(selectedProduct.status)}`}>
-                    {selectedProduct.status}
-                  </span>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-amber-900 mb-1">Colors</label>
-                  <div className="flex space-x-2">
-                    {selectedProduct.colors.map((color, index) => (
-                      <div
-                        key={index}
-                        className="w-6 h-6 border border-stone-300"
-                        style={{
-                          backgroundColor: color === "Sage" ? "#87A96B" :
-                                         color === "Charcoal" ? "#36454F" :
-                                         color === "Cream" ? "#F5F5DC" :
-                                         color === "Natural" ? "#F4F1E8" :
-                                         color === "Terracotta" ? "#E2725B" :
-                                         color === "Forest" ? "#355E3B" :
-                                         color === "Stone" ? "#8D7B68" :
-                                         color === "Olive" ? "#808000" :
-                                         color === "Black" ? "#000000" :
-                                         color === "Camel" ? "#C19A6B" : "#F5F5DC"
-                        }}
-                        title={color}
-                      />
-                    ))}
-                  </div>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-amber-900 mb-1">Sizes</label>
-                  <p className="text-stone-700">{selectedProduct.sizes.join(', ')}</p>
-                </div>
+              <div>
+                <label className="block text-sm font-medium text-amber-900 mb-1">SKU</label>
+                <input name="sku" value={form.sku} onChange={handleChange} placeholder="SKU" className="border px-4 py-2 w-full" />
               </div>
             </div>
+            <div>
+              <label className="block text-sm font-medium text-amber-900 mb-1">Category *</label>
+              <select name="category" value={form.category} onChange={handleChange} required className="border px-4 py-2 w-full">
+                {categories.slice(1).map(cat => <option key={cat} value={cat}>{cat}</option>)}
+              </select>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-amber-900 mb-1">Collection</label>
+                <select
+                  className="w-full border border-stone-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-900"
+                  value={form.collection}
+                  onChange={e => setForm(f => ({ ...f, collection: e.target.value }))}
+                >
+                  <option value="Women">Women</option>
+                  <option value="Men">Men</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-amber-900 mb-1">Status</label>
+                <select name="status" value={form.status} onChange={handleChange} className="border px-4 py-2 w-full">
+                  <option value="Active">Active</option>
+                  <option value="Low Stock">Low Stock</option>
+                  <option value="Out of Stock">Out of Stock</option>
+                </select>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-amber-900 mb-1">Colors (comma separated)</label>
+                <input name="colors" value={form.colors} onChange={handleChange} placeholder="e.g. #000000, #ffffff, red" className="border px-4 py-2 w-full" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-amber-900 mb-1">Sizes (comma separated)</label>
+                <input name="sizes" value={form.sizes} onChange={handleChange} placeholder="e.g. S, M, L, XL" className="border px-4 py-2 w-full" />
+              </div>
+            </div>
+            <div className="flex items-center space-x-4">
+              <label className="text-sm font-medium text-amber-900">In Stock</label>
+              <input name="inStock" type="checkbox" checked={form.inStock} onChange={handleChange} />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-amber-900 mb-1">Images</label>
+              {form.images.map((img, idx) => (
+                <div key={idx} className="flex items-center mb-2">
+                  <input value={img} onChange={e => handleImageChange(idx, e.target.value)} placeholder="Image URL" className="border px-4 py-2 flex-1" />
+                  {form.images.length > 1 && <button type="button" onClick={() => removeImageField(idx)} className="ml-2 text-red-600">Remove</button>}
+                </div>
+              ))}
+              <button type="button" onClick={addImageField} className="mt-2 text-amber-900">+ Add Image</button>
+            </div>
           </div>
-          
-          <div className="p-6 border-t border-stone-200 flex justify-end space-x-4">
-            <button
-              onClick={() => setShowViewModal(false)}
-              className="px-6 py-2 border border-stone-300 text-stone-700 hover:bg-stone-50 transition-colors"
-            >
-              Close
-            </button>
-            <button
-              onClick={() => {
-                setShowViewModal(false);
-                handleEditProduct(selectedProduct);
-              }}
-              className="px-6 py-2 bg-amber-900 text-white hover:bg-amber-800 transition-colors"
-            >
-              Edit Product
+          <div className="flex justify-end mt-8 space-x-2">
+            <button type="button" onClick={() => setShowAddModal(false)} className="px-4 py-2 border border-stone-300 text-stone-700">Cancel</button>
+            <button type="submit" disabled={saving} className="px-6 py-2 bg-amber-900 text-white hover:bg-amber-800 transition-colors flex items-center">
+              {saving && <span className="loader mr-2" aria-label="Saving..." />}
+              {saving ? 'Saving...' : 'Add Product'}
             </button>
           </div>
-        </motion.div>
-      </motion.div>
+        </form>
+      </div>
     );
   };
 
   const EditProductModal = () => {
     if (!selectedProduct) return null;
-    
+    const initialForm = {
+      name: selectedProduct.name || '',
+      description: selectedProduct.description || '',
+      price: selectedProduct.price || '',
+      images: selectedProduct.images?.length ? [...selectedProduct.images] : [''],
+      category: selectedProduct.category || categories[1] || '',
+      collection: selectedProduct.collection || '',
+      colors: (selectedProduct.colors || []).join(', '),
+      sizes: (selectedProduct.sizes || []).join(', '),
+      inStock: selectedProduct.inStock ?? true,
+      sku: selectedProduct.sku || '',
+      status: selectedProduct.status || 'Active',
+    };
+    const [form, setForm] = useState(initialForm);
+    const [error, setError] = useState('');
+    const [saving, setSaving] = useState(false);
+
+    // Reset form and error when modal opens
+    React.useEffect(() => {
+      setForm(initialForm);
+      setError('');
+    }, [showEditModal, selectedProduct]);
+
+    // Close modal on Escape key
+    React.useEffect(() => {
+      const handleKeyDown = (e: KeyboardEvent) => {
+        if (e.key === 'Escape') setShowEditModal(false);
+      };
+      if (showEditModal) {
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+      }
+    }, [showEditModal]);
+
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+      const { name, value, type } = e.target;
+      if (type === 'checkbox') {
+        setForm(f => ({ ...f, [name]: (e.target as HTMLInputElement).checked }));
+      } else {
+        setForm(f => ({ ...f, [name]: value }));
+      }
+    };
+
+    const handleImageChange = (idx: number, value: string) => {
+      setForm(f => {
+        const images = [...f.images];
+        images[idx] = value;
+        return { ...f, images };
+      });
+    };
+
+    const addImageField = () => setForm(f => ({ ...f, images: [...f.images, ''] }));
+    const removeImageField = (idx: number) => setForm(f => ({ ...f, images: f.images.filter((_, i) => i !== idx) }));
+
+    const handleBackgroundClick = (e: React.MouseEvent) => {
+      if (e.target === e.currentTarget) setShowEditModal(false);
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+      e.preventDefault();
+      setSaving(true);
+      setError('');
+      // Basic validation
+      if (!form.name.trim() || !form.price || !form.category) {
+        setError('Name, price, and category are required.');
+        setSaving(false);
+        return;
+      }
+      try {
+        const token = localStorage.getItem('token');
+        const res = await fetch(`/api/products/${selectedProduct._id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            ...form,
+            price: Number(form.price),
+            colors: form.colors.split(',').map((c: string) => c.trim()).filter(Boolean),
+            sizes: form.sizes.split(',').map((s: string) => s.trim()).filter(Boolean),
+          })
+        });
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.message || 'Failed to update product');
+        }
+        const updatedProduct = await res.json();
+        setProducts(prev => prev.map(p => p._id === updatedProduct._id ? updatedProduct : p));
+        setShowEditModal(false);
+      } catch (err: any) {
+        setError(err.message || 'Failed to update product');
+      }
+      setSaving(false);
+    };
+
     return (
-      <motion.div
-        className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        onClick={() => setShowEditModal(false)}
-      >
-        <motion.div
-          className="bg-white max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-2xl"
-          initial={{ scale: 0.9, y: 50 }}
-          animate={{ scale: 1, y: 0 }}
-          exit={{ scale: 0.9, y: 50 }}
-          onClick={(e) => e.stopPropagation()}
-        >
-          <div className="p-6 border-b border-stone-200">
-            <h2 className="text-2xl font-light text-amber-900 tracking-[0.1em]">
-              Edit Product: {selectedProduct.name}
-            </h2>
+      <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50" onClick={handleBackgroundClick}>
+        <form onSubmit={handleSubmit} className="bg-white max-w-lg w-full p-8 rounded shadow-lg relative overflow-y-auto max-h-[90vh]" onClick={e => e.stopPropagation()}>
+          {/* Modal Header */}
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-2xl font-light text-amber-900">Edit Product</h2>
+            <button type="button" onClick={() => setShowEditModal(false)} className="p-2 rounded-full hover:bg-stone-100 transition-colors" aria-label="Close">
+              <span aria-hidden="true">&times;</span>
+            </button>
           </div>
-          
-          <form className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {error && <div className="text-red-600 mb-4">{error}</div>}
+          <div className="grid grid-cols-1 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-amber-900 mb-1">Name *</label>
+              <input name="name" value={form.name} onChange={handleChange} required placeholder="Product name" className="border px-4 py-2 w-full" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-amber-900 mb-1">Description</label>
+              <textarea name="description" value={form.description} onChange={handleChange} placeholder="Description" className="border px-4 py-2 w-full" />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-amber-900 mb-2">
-                  Product Name *
-                </label>
-                <input
-                  type="text"
-                  defaultValue={selectedProduct.name}
-                  className="w-full px-4 py-3 border border-stone-300 focus:outline-none focus:border-amber-900 transition-colors"
-                />
+                <label className="block text-sm font-medium text-amber-900 mb-1">Price (Rs) *</label>
+                <input name="price" value={form.price} onChange={handleChange} required placeholder="Price" type="number" min="0" className="border px-4 py-2 w-full" />
               </div>
-              
               <div>
-                <label className="block text-sm font-medium text-amber-900 mb-2">
-                  SKU *
-                </label>
-                <input
-                  type="text"
-                  defaultValue={selectedProduct.sku}
-                  className="w-full px-4 py-3 border border-stone-300 focus:outline-none focus:border-amber-900 transition-colors"
-                />
+                <label className="block text-sm font-medium text-amber-900 mb-1">SKU</label>
+                <input name="sku" value={form.sku} onChange={handleChange} placeholder="SKU" className="border px-4 py-2 w-full" />
               </div>
-              
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-amber-900 mb-1">Category *</label>
+              <select name="category" value={form.category} onChange={handleChange} required className="border px-4 py-2 w-full">
+                {categories.slice(1).map(cat => <option key={cat} value={cat}>{cat}</option>)}
+              </select>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-amber-900 mb-2">
-                  Category *
-                </label>
+                <label className="block text-sm font-medium text-amber-900 mb-1">Collection</label>
                 <select
-                  defaultValue={selectedProduct.category}
-                  className="w-full px-4 py-3 border border-stone-300 focus:outline-none focus:border-amber-900 transition-colors"
+                  className="w-full border border-stone-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-900"
+                  value={form.collection || 'Women'}
+                  onChange={e => setForm(f => ({ ...f, collection: e.target.value }))}
                 >
-                  {categories.slice(1).map(category => (
-                    <option key={category} value={category}>{category}</option>
-                  ))}
+                  <option value="Women">Women</option>
+                  <option value="Men">Men</option>
                 </select>
               </div>
-              
               <div>
-                <label className="block text-sm font-medium text-amber-900 mb-2">
-                  Price (Rs.) *
-                </label>
-                <input
-                  type="number"
-                  defaultValue={selectedProduct.price}
-                  className="w-full px-4 py-3 border border-stone-300 focus:outline-none focus:border-amber-900 transition-colors"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-amber-900 mb-2">
-                  Stock Quantity *
-                </label>
-                <input
-                  type="number"
-                  defaultValue={selectedProduct.stock}
-                  className="w-full px-4 py-3 border border-stone-300 focus:outline-none focus:border-amber-900 transition-colors"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-amber-900 mb-2">
-                  Status *
-                </label>
-                <select
-                  defaultValue={selectedProduct.status}
-                  className="w-full px-4 py-3 border border-stone-300 focus:outline-none focus:border-amber-900 transition-colors"
-                >
+                <label className="block text-sm font-medium text-amber-900 mb-1">Status</label>
+                <select name="status" value={form.status} onChange={handleChange} className="border px-4 py-2 w-full">
                   <option value="Active">Active</option>
                   <option value="Low Stock">Low Stock</option>
                   <option value="Out of Stock">Out of Stock</option>
-                  <option value="Inactive">Inactive</option>
                 </select>
               </div>
             </div>
-            
-            <div className="mt-6">
-              <label className="block text-sm font-medium text-amber-900 mb-2">
-                Description
-              </label>
-              <textarea
-                rows={4}
-                className="w-full px-4 py-3 border border-stone-300 focus:outline-none focus:border-amber-900 transition-colors resize-none"
-                placeholder="Product description..."
-              />
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-amber-900 mb-1">Colors (comma separated)</label>
+                <input name="colors" value={form.colors} onChange={handleChange} placeholder="e.g. #000000, #ffffff, red" className="border px-4 py-2 w-full" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-amber-900 mb-1">Sizes (comma separated)</label>
+                <input name="sizes" value={form.sizes} onChange={handleChange} placeholder="e.g. S, M, L, XL" className="border px-4 py-2 w-full" />
+              </div>
             </div>
-          </form>
-          
-          <div className="p-6 border-t border-stone-200 flex justify-end space-x-4">
-            <button
-              onClick={() => setShowEditModal(false)}
-              className="px-6 py-2 border border-stone-300 text-stone-700 hover:bg-stone-50 transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={() => {
-                alert('Product updated successfully!');
-                setShowEditModal(false);
-              }}
-              className="px-6 py-2 bg-amber-900 text-white hover:bg-amber-800 transition-colors"
-            >
-              Update Product
+            <div className="flex items-center space-x-4">
+              <label className="text-sm font-medium text-amber-900">In Stock</label>
+              <input name="inStock" type="checkbox" checked={form.inStock} onChange={handleChange} />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-amber-900 mb-1">Images</label>
+              {form.images.map((img, idx) => (
+                <div key={idx} className="flex items-center mb-2">
+                  <input value={img} onChange={e => handleImageChange(idx, e.target.value)} placeholder="Image URL" className="border px-4 py-2 flex-1" />
+                  {form.images.length > 1 && <button type="button" onClick={() => removeImageField(idx)} className="ml-2 text-red-600">Remove</button>}
+                </div>
+              ))}
+              <button type="button" onClick={addImageField} className="mt-2 text-amber-900">+ Add Image</button>
+            </div>
+          </div>
+          <div className="flex justify-end mt-8 space-x-2">
+            <button type="button" onClick={() => setShowEditModal(false)} className="px-4 py-2 border border-stone-300 text-stone-700">Cancel</button>
+            <button type="submit" disabled={saving} className="px-6 py-2 bg-amber-900 text-white hover:bg-amber-800 transition-colors flex items-center">
+              {saving && <span className="loader mr-2" aria-label="Saving..." />}
+              {saving ? 'Saving...' : 'Update Product'}
             </button>
           </div>
-        </motion.div>
-      </motion.div>
+        </form>
+      </div>
     );
   };
+
+  const ViewProductModal = () => {
+    if (!selectedProduct) return null;
+    // Close modal on Escape key
+    React.useEffect(() => {
+      const handleKeyDown = (e: KeyboardEvent) => {
+        if (e.key === 'Escape') setShowViewModal(false);
+      };
+      window.addEventListener('keydown', handleKeyDown);
+      return () => window.removeEventListener('keydown', handleKeyDown);
+    }, []);
+    const handleBackgroundClick = (e: React.MouseEvent) => {
+      if (e.target === e.currentTarget) setShowViewModal(false);
+    };
+    return (
+      <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50" onClick={handleBackgroundClick}>
+        <div className="bg-white max-w-2xl w-full p-8 rounded shadow-lg relative overflow-y-auto max-h-[90vh]" onClick={e => e.stopPropagation()}>
+          {/* Modal Header */}
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-2xl font-light text-amber-900">Product Details</h2>
+            <button type="button" onClick={() => setShowViewModal(false)} className="p-2 rounded-full hover:bg-stone-100 transition-colors" aria-label="Close">
+              <span aria-hidden="true">&times;</span>
+            </button>
+          </div>
+          <div className="flex flex-col md:flex-row gap-8">
+            <div className="flex-shrink-0 w-full md:w-1/3 flex items-center justify-center">
+              <img src={selectedProduct.images?.[0] || ''} alt={selectedProduct.name} className="w-40 h-40 object-cover rounded border" />
+            </div>
+            <div className="flex-1 space-y-3">
+              <h3 className="text-xl font-medium text-amber-900 mb-2">{selectedProduct.name}</h3>
+              <p className="text-stone-600 mb-2">{selectedProduct.description}</p>
+              <div className="flex items-center space-x-4 mb-2">
+                <span className="text-lg font-semibold text-amber-900">Rs. {selectedProduct.price?.toLocaleString()}</span>
+                {selectedProduct.status && (
+                  <span className={`px-2 py-1 text-xs font-medium rounded tracking-[0.05em] uppercase ${getStatusColor(selectedProduct.status)}`}>{selectedProduct.status}</span>
+                )}
+              </div>
+              <div className="grid grid-cols-2 gap-2 mb-2">
+                <div>
+                  <span className="block text-xs text-stone-500 mb-1">Category</span>
+                  <span className="text-sm text-stone-700">{selectedProduct.category}</span>
+                </div>
+                <div>
+                  <span className="block text-xs text-stone-500 mb-1">Collection</span>
+                  <span className="text-sm text-stone-700">{selectedProduct.collection}</span>
+                </div>
+                <div>
+                  <span className="block text-xs text-stone-500 mb-1">SKU</span>
+                  <span className="text-sm text-stone-700">{selectedProduct.sku}</span>
+                </div>
+                <div>
+                  <span className="block text-xs text-stone-500 mb-1">Stock</span>
+                  <span className={`text-sm ${selectedProduct.stock > 10 ? 'text-green-600' : selectedProduct.stock > 0 ? 'text-amber-600' : 'text-red-600'}`}>{selectedProduct.stock}</span>
+                </div>
+              </div>
+              <div className="mb-2">
+                <span className="block text-xs text-stone-500 mb-1">Colors</span>
+                <div className="flex space-x-2">
+                  {(selectedProduct.colors || []).map((color: string, idx: number) => (
+                    <span key={idx} className="w-6 h-6 rounded-full border border-stone-300 inline-block" style={{ backgroundColor: color }} title={color} />
+                  ))}
+                </div>
+              </div>
+              <div className="mb-2">
+                <span className="block text-xs text-stone-500 mb-1">Sizes</span>
+                <span className="text-sm text-stone-700">{(selectedProduct.sizes || []).join(', ')}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  if (loading) return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+  if (error) return <div className="min-h-screen flex items-center justify-center text-red-600">{error}</div>;
 
   return (
     <div className="min-h-screen bg-stone-50 pt-20">
@@ -507,7 +576,6 @@ const AdminProducts = () => {
                 </p>
               </div>
             </div>
-            
             <motion.button
               onClick={() => setShowAddModal(true)}
               className="flex items-center space-x-2 bg-amber-900 text-white px-6 py-3 hover:bg-amber-800 transition-colors shadow-lg"
@@ -519,7 +587,6 @@ const AdminProducts = () => {
             </motion.button>
           </div>
         </motion.div>
-
         {/* Filters */}
         <motion.div
           className="bg-white p-6 shadow-lg border border-stone-200 mb-8"
@@ -538,7 +605,6 @@ const AdminProducts = () => {
                 className="w-full pl-10 pr-4 py-2 border border-stone-300 text-amber-900 placeholder-stone-400 focus:outline-none focus:border-amber-900 transition-colors"
               />
             </div>
-
             <select
               value={categoryFilter}
               onChange={(e) => setCategoryFilter(e.target.value)}
@@ -548,7 +614,6 @@ const AdminProducts = () => {
                 <option key={category} value={category}>{category} Category</option>
               ))}
             </select>
-
             <div className="flex space-x-2">
               <button className="flex-1 px-4 py-2 border border-amber-900 text-amber-900 hover:bg-amber-50 transition-colors text-sm">
                 Export CSV
@@ -559,12 +624,11 @@ const AdminProducts = () => {
             </div>
           </div>
         </motion.div>
-
         {/* Products Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {filteredProducts.map((product, index) => (
             <motion.div
-              key={product.id}
+              key={product._id}
               className="bg-white shadow-lg border border-stone-200 overflow-hidden hover:shadow-xl transition-all duration-300"
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
@@ -573,13 +637,13 @@ const AdminProducts = () => {
             >
               <div className="relative">
                 <img
-                  src={product.image}
+                  src={product.images?.[0] || ''}
                   alt={product.name}
                   className="w-full h-48 object-cover"
                 />
                 <div className="absolute top-3 left-3">
                   <span className={`px-2 py-1 text-xs font-medium tracking-[0.05em] uppercase ${getStatusColor(product.status)}`}>
-                    {product.status}
+                    {product.status || 'Active'}
                   </span>
                 </div>
                 <div className="absolute top-3 right-3 flex space-x-1">
@@ -606,13 +670,12 @@ const AdminProducts = () => {
                     whileHover={{ scale: 1.1 }}
                     whileTap={{ scale: 0.95 }}
                     title="Delete Product"
-                    onClick={() => handleDeleteProduct(product.id)}
+                    onClick={() => handleDeleteProduct(product._id)}
                   >
                     <Trash2 size={14} className="text-red-600" />
                   </motion.button>
                 </div>
               </div>
-
               <div className="p-4">
                 <p className="text-xs text-stone-500 mb-1 tracking-[0.1em] uppercase">
                   {product.category}
@@ -623,10 +686,9 @@ const AdminProducts = () => {
                 <p className="text-xs text-stone-500 mb-3">
                   SKU: {product.sku}
                 </p>
-                
                 <div className="flex justify-between items-center mb-3">
                   <span className="text-lg font-medium text-amber-900">
-                    Rs. {product.price.toLocaleString()}
+                    Rs. {product.price?.toLocaleString()}
                   </span>
                   <span className={`text-sm ${
                     product.stock > 10 ? 'text-green-600' :
@@ -636,39 +698,26 @@ const AdminProducts = () => {
                     Stock: {product.stock}
                   </span>
                 </div>
-
                 <div className="space-y-2">
                   <div>
                     <p className="text-xs text-stone-500 mb-1">Colors:</p>
                     <div className="flex space-x-1">
-                      {product.colors.slice(0, 3).map((color, colorIndex) => (
+                      {(product.colors || []).slice(0, 3).map((color: string, colorIndex: number) => (
                         <div
                           key={colorIndex}
                           className="w-4 h-4 border border-stone-300"
-                          style={{
-                            backgroundColor: color === "Sage" ? "#87A96B" :
-                                           color === "Charcoal" ? "#36454F" :
-                                           color === "Cream" ? "#F5F5DC" :
-                                           color === "Natural" ? "#F4F1E8" :
-                                           color === "Terracotta" ? "#E2725B" :
-                                           color === "Forest" ? "#355E3B" :
-                                           color === "Stone" ? "#8D7B68" :
-                                           color === "Olive" ? "#808000" :
-                                           color === "Black" ? "#000000" :
-                                           color === "Camel" ? "#C19A6B" : "#F5F5DC"
-                          }}
+                          style={{ backgroundColor: color }}
                         />
                       ))}
-                      {product.colors.length > 3 && (
+                      {product.colors && product.colors.length > 3 && (
                         <span className="text-xs text-stone-500">+{product.colors.length - 3}</span>
                       )}
                     </div>
                   </div>
-                  
                   <div>
                     <p className="text-xs text-stone-500 mb-1">Sizes:</p>
                     <p className="text-xs text-stone-600">
-                      {product.sizes.join(', ')}
+                      {(product.sizes || []).join(', ')}
                     </p>
                   </div>
                 </div>
@@ -676,7 +725,6 @@ const AdminProducts = () => {
             </motion.div>
           ))}
         </div>
-
         {filteredProducts.length === 0 && (
           <motion.div
             className="text-center py-12"
@@ -693,15 +741,9 @@ const AdminProducts = () => {
             </p>
           </motion.div>
         )}
-
-        {/* Add Product Modal */}
         {showAddModal && <AddProductModal />}
-        
-        {/* View Product Modal */}
-        {showViewModal && <ViewProductModal />}
-        
-        {/* Edit Product Modal */}
         {showEditModal && <EditProductModal />}
+        {showViewModal && <ViewProductModal />}
       </div>
     </div>
   );

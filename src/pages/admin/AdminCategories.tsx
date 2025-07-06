@@ -1,110 +1,34 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
+import { useAuth } from '../../context/AuthContext';
 import { Plus, Search, Edit, Trash2, Tag, Package, Eye } from 'lucide-react';
 
 const AdminCategories = () => {
+  const { user } = useAuth();
+  const [categories, setCategories] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const [searchTerm, setSearchTerm] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
-  const [editingCategory, setEditingCategory] = useState(null);
-  const [formData, setFormData] = useState({
-    name: '',
-    description: '',
-    collection: 'Women',
-    status: 'Active'
-  });
+  const [editingCategory, setEditingCategory] = useState<any>(null);
+  const [saving, setSaving] = useState(false);
 
-  const categories = [
-    {
-      id: 1,
-      name: 'Blazers',
-      description: 'Professional and casual blazers for all occasions',
-      collection: 'Women',
-      productCount: 12,
-      status: 'Active',
-      createdDate: '2024-01-10'
-    },
-    {
-      id: 2,
-      name: 'Dresses',
-      description: 'Elegant and comfortable dresses',
-      collection: 'Women',
-      productCount: 18,
-      status: 'Active',
-      createdDate: '2024-01-08'
-    },
-    {
-      id: 3,
-      name: 'Trousers',
-      description: 'Sustainable trousers and pants',
-      collection: 'Women',
-      productCount: 15,
-      status: 'Active',
-      createdDate: '2024-01-05'
-    },
-    {
-      id: 4,
-      name: 'Knitwear',
-      description: 'Cozy sweaters and cardigans',
-      collection: 'Women',
-      productCount: 8,
-      status: 'Active',
-      createdDate: '2024-01-03'
-    },
-    {
-      id: 5,
-      name: 'Blouses',
-      description: 'Elegant blouses and shirts',
-      collection: 'Women',
-      productCount: 10,
-      status: 'Active',
-      createdDate: '2024-01-01'
-    },
-    {
-      id: 6,
-      name: 'Outerwear',
-      description: 'Coats, jackets and outerwear',
-      collection: 'Women',
-      productCount: 6,
-      status: 'Active',
-      createdDate: '2023-12-28'
-    },
-    {
-      id: 7,
-      name: 'Suits',
-      description: 'Professional suits and formal wear',
-      collection: 'Men',
-      productCount: 8,
-      status: 'Active',
-      createdDate: '2024-01-12'
-    },
-    {
-      id: 8,
-      name: 'Shirts',
-      description: 'Dress shirts and casual shirts',
-      collection: 'Men',
-      productCount: 14,
-      status: 'Active',
-      createdDate: '2024-01-09'
-    },
-    {
-      id: 9,
-      name: 'Casual',
-      description: 'Casual wear and everyday clothing',
-      collection: 'Men',
-      productCount: 11,
-      status: 'Active',
-      createdDate: '2024-01-06'
-    },
-    {
-      id: 10,
-      name: 'Accessories',
-      description: 'Belts, ties and accessories',
-      collection: 'Men',
-      productCount: 3,
-      status: 'Draft',
-      createdDate: '2024-01-02'
-    }
-  ];
+  useEffect(() => {
+    const fetchCategories = async () => {
+      setLoading(true);
+      setError("");
+      try {
+        const res = await fetch('/api/categories');
+        if (!res.ok) throw new Error('Failed to fetch categories');
+        const data = await res.json();
+        setCategories(data);
+      } catch (err: any) {
+        setError(err.message || 'Failed to fetch categories');
+      }
+      setLoading(false);
+    };
+    fetchCategories();
+  }, []);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -117,139 +41,115 @@ const AdminCategories = () => {
 
   const filteredCategories = categories.filter(category =>
     category.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    category.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    category.collection.toLowerCase().includes(searchTerm.toLowerCase())
+    category.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    category.collection?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    console.log('Category data:', formData);
-    setShowAddModal(false);
-    setEditingCategory(null);
-    setFormData({ name: '', description: '', collection: 'Women', status: 'Active' });
-  };
-
-  const handleEdit = (category) => {
-    setEditingCategory(category);
-    setFormData({
-      name: category.name,
-      description: category.description,
-      collection: category.collection,
-      status: category.status
-    });
-    setShowAddModal(true);
-  };
-
-  const handleDelete = (categoryId: number) => {
-    if (confirm('Are you sure you want to delete this category?')) {
-      console.log('Delete category:', categoryId);
+  const handleDelete = async (categoryId: string) => {
+    if (!window.confirm('Are you sure you want to delete this category?')) return;
+    setSaving(true);
+    setError("");
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`/api/categories/${categoryId}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (!res.ok) throw new Error('Failed to delete category');
+      setCategories((prev) => prev.filter(c => c._id !== categoryId));
+    } catch (err: any) {
+      setError(err.message || 'Failed to delete category');
     }
+    setSaving(false);
   };
 
-  const CategoryModal = () => (
-    <motion.div
-      className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-    >
-      <motion.div
-        className="bg-white max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl"
-        initial={{ scale: 0.9, y: 50 }}
-        animate={{ scale: 1, y: 0 }}
-        exit={{ scale: 0.9, y: 50 }}
-      >
-        <div className="p-6 border-b border-stone-200">
-          <h2 className="text-2xl font-light text-amber-900 tracking-[0.1em]">
-            {editingCategory ? 'Edit Category' : 'Add New Category'}
-          </h2>
-        </div>
-        
-        <form onSubmit={handleSubmit} className="p-6">
-          <div className="space-y-6">
+  // Add/Edit modal stub
+  const CategoryModal = () => {
+    const isEdit = !!editingCategory;
+    const [form, setForm] = useState({
+      name: editingCategory?.name || '',
+      description: editingCategory?.description || '',
+      collection: editingCategory?.collection || '',
+      status: editingCategory?.status || 'Active',
+    });
+    const [error, setError] = useState('');
+    const [saving, setSaving] = useState(false);
+
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+      const { name, value } = e.target;
+      setForm(f => ({ ...f, [name]: value }));
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+      e.preventDefault();
+      setSaving(true);
+      setError('');
+      try {
+        const token = localStorage.getItem('token');
+        let res, data;
+        if (isEdit) {
+          res = await fetch(`/api/categories/${editingCategory._id}`, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(form)
+          });
+        } else {
+          res = await fetch('/api/categories', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(form)
+          });
+        }
+        if (!res.ok) throw new Error(isEdit ? 'Failed to update category' : 'Failed to add category');
+        data = await res.json();
+        if (isEdit) {
+          setCategories(prev => prev.map(c => c._id === data._id ? data : c));
+        } else {
+          setCategories(prev => [data, ...prev]);
+        }
+        setShowAddModal(false);
+        setEditingCategory(null);
+      } catch (err: any) {
+        setError(err.message || (isEdit ? 'Failed to update category' : 'Failed to add category'));
+      }
+      setSaving(false);
+    };
+
+    return (
+      <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+        <form onSubmit={handleSubmit} className="bg-white max-w-md w-full p-8 rounded shadow-lg relative">
+          <h2 className="text-2xl font-light text-amber-900 mb-6">{isEdit ? 'Edit' : 'Add'} Category</h2>
+          {error && <div className="text-red-600 mb-4">{error}</div>}
+          <div className="grid grid-cols-1 gap-4">
+            <input name="name" value={form.name} onChange={handleChange} required placeholder="Name" className="border px-4 py-2" />
+            <textarea name="description" value={form.description} onChange={handleChange} placeholder="Description" className="border px-4 py-2" />
+            <input name="collection" value={form.collection} onChange={handleChange} placeholder="Collection" className="border px-4 py-2" />
             <div>
-              <label className="block text-sm font-medium text-amber-900 mb-2">
-                Category Name *
-              </label>
-              <input
-                type="text"
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                required
-                className="w-full px-4 py-3 border border-stone-300 focus:outline-none focus:border-amber-900 transition-colors"
-                placeholder="Enter category name"
-              />
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-amber-900 mb-2">
-                Description
-              </label>
-              <textarea
-                value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                rows={3}
-                className="w-full px-4 py-3 border border-stone-300 focus:outline-none focus:border-amber-900 transition-colors resize-none"
-                placeholder="Enter category description"
-              />
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-amber-900 mb-2">
-                  Collection *
-                </label>
-                <select
-                  value={formData.collection}
-                  onChange={(e) => setFormData({ ...formData, collection: e.target.value })}
-                  className="w-full px-4 py-3 border border-stone-300 focus:outline-none focus:border-amber-900 transition-colors"
-                >
-                  <option value="Women">Women</option>
-                  <option value="Men">Men</option>
-                  <option value="Unisex">Unisex</option>
-                </select>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-amber-900 mb-2">
-                  Status *
-                </label>
-                <select
-                  value={formData.status}
-                  onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                  className="w-full px-4 py-3 border border-stone-300 focus:outline-none focus:border-amber-900 transition-colors"
-                >
-                  <option value="Active">Active</option>
-                  <option value="Draft">Draft</option>
-                  <option value="Inactive">Inactive</option>
-                </select>
-              </div>
+              <label className="mr-2">Status</label>
+              <select name="status" value={form.status} onChange={handleChange} className="border px-4 py-2">
+                <option value="Active">Active</option>
+                <option value="Draft">Draft</option>
+                <option value="Inactive">Inactive</option>
+              </select>
             </div>
           </div>
-          
-          <div className="flex justify-end space-x-4 mt-8 pt-6 border-t border-stone-200">
-            <button
-              type="button"
-              onClick={() => {
-                setShowAddModal(false);
-                setEditingCategory(null);
-                setFormData({ name: '', description: '', collection: 'Women', status: 'Active' });
-              }}
-              className="px-6 py-2 border border-stone-300 text-stone-700 hover:bg-stone-50 transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="px-6 py-2 bg-amber-900 text-white hover:bg-amber-800 transition-colors"
-            >
-              {editingCategory ? 'Update Category' : 'Add Category'}
-            </button>
+          <div className="flex justify-end mt-6 space-x-2">
+            <button type="button" onClick={() => { setShowAddModal(false); setEditingCategory(null); }} className="px-4 py-2 border border-stone-300 text-stone-700">Cancel</button>
+            <button type="submit" disabled={saving} className="px-6 py-2 bg-amber-900 text-white hover:bg-amber-800 transition-colors">{saving ? (isEdit ? 'Saving...' : 'Adding...') : (isEdit ? 'Update Category' : 'Add Category')}</button>
           </div>
         </form>
-      </motion.div>
-    </motion.div>
-  );
+      </div>
+    );
+  };
+
+  if (loading) return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+  if (error) return <div className="min-h-screen flex items-center justify-center text-red-600">{error}</div>;
 
   return (
     <div className="min-h-screen bg-stone-50 pt-20">
@@ -276,7 +176,6 @@ const AdminCategories = () => {
                 </p>
               </div>
             </div>
-            
             <motion.button
               onClick={() => setShowAddModal(true)}
               className="flex items-center space-x-2 bg-amber-900 text-white px-6 py-3 hover:bg-amber-800 transition-colors shadow-lg"
@@ -288,7 +187,6 @@ const AdminCategories = () => {
             </motion.button>
           </div>
         </motion.div>
-
         {/* Stats Cards */}
         <motion.div
           className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8"
@@ -309,7 +207,6 @@ const AdminCategories = () => {
               <Tag size={24} className="text-amber-900" />
             </div>
           </div>
-
           <div className="bg-white p-6 shadow-lg border border-stone-200">
             <div className="flex items-center justify-between">
               <div>
@@ -323,7 +220,6 @@ const AdminCategories = () => {
               <Tag size={24} className="text-green-600" />
             </div>
           </div>
-
           <div className="bg-white p-6 shadow-lg border border-stone-200">
             <div className="flex items-center justify-between">
               <div>
@@ -337,12 +233,11 @@ const AdminCategories = () => {
               <Tag size={24} className="text-purple-600" />
             </div>
           </div>
-
           <div className="bg-white p-6 shadow-lg border border-stone-200">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-2xl font-light text-amber-900">
-                  {categories.reduce((sum, c) => sum + c.productCount, 0)}
+                  {categories.reduce((sum, c) => sum + (c.productCount || 0), 0)}
                 </p>
                 <p className="text-sm text-stone-600 uppercase tracking-[0.05em]">
                   Total Products
@@ -352,7 +247,6 @@ const AdminCategories = () => {
             </div>
           </div>
         </motion.div>
-
         {/* Search */}
         <motion.div
           className="bg-white p-6 shadow-lg border border-stone-200 mb-8"
@@ -371,12 +265,11 @@ const AdminCategories = () => {
             />
           </div>
         </motion.div>
-
         {/* Categories Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredCategories.map((category, index) => (
             <motion.div
-              key={category.id}
+              key={category._id}
               className="bg-white shadow-lg border border-stone-200 overflow-hidden hover:shadow-xl transition-all duration-300"
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
@@ -398,31 +291,27 @@ const AdminCategories = () => {
                       </p>
                     </div>
                   </div>
-                  
                   <span className={`px-2 py-1 text-xs font-medium tracking-[0.05em] uppercase ${getStatusColor(category.status)}`}>
                     {category.status}
                   </span>
                 </div>
-
                 <p className="text-stone-600 text-sm mb-4 leading-relaxed">
                   {category.description}
                 </p>
-
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center space-x-2">
                     <Package size={16} className="text-amber-900" />
                     <span className="text-sm font-medium text-amber-900">
-                      {category.productCount} products
+                      {category.productCount || 0} products
                     </span>
                   </div>
                   <span className="text-xs text-stone-500">
-                    Created {new Date(category.createdDate).toLocaleDateString()}
+                    Created {category.createdDate ? new Date(category.createdDate).toLocaleDateString() : ''}
                   </span>
                 </div>
-
                 <div className="flex space-x-2">
                   <motion.button
-                    onClick={() => console.log('View products in category:', category.id)}
+                    onClick={() => console.log('View products in category:', category._id)}
                     className="flex-1 flex items-center justify-center space-x-2 py-2 border border-amber-900 text-amber-900 hover:bg-amber-50 transition-colors text-sm"
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
@@ -430,9 +319,8 @@ const AdminCategories = () => {
                     <Eye size={14} />
                     <span>View Products</span>
                   </motion.button>
-                  
                   <motion.button
-                    onClick={() => handleEdit(category)}
+                    onClick={() => setEditingCategory(category)}
                     className="p-2 border border-amber-900 text-amber-900 hover:bg-amber-50 transition-colors"
                     whileHover={{ scale: 1.1 }}
                     whileTap={{ scale: 0.95 }}
@@ -440,9 +328,8 @@ const AdminCategories = () => {
                   >
                     <Edit size={14} />
                   </motion.button>
-                  
                   <motion.button
-                    onClick={() => handleDelete(category.id)}
+                    onClick={() => handleDelete(category._id)}
                     className="p-2 border border-red-300 text-red-600 hover:bg-red-50 transition-colors"
                     whileHover={{ scale: 1.1 }}
                     whileTap={{ scale: 0.95 }}
@@ -455,7 +342,6 @@ const AdminCategories = () => {
             </motion.div>
           ))}
         </div>
-
         {filteredCategories.length === 0 && (
           <motion.div
             className="text-center py-12"
@@ -472,8 +358,7 @@ const AdminCategories = () => {
             </p>
           </motion.div>
         )}
-
-        {/* Category Modal */}
+        {/* Add/Edit Category Modal */}
         {showAddModal && <CategoryModal />}
       </div>
     </div>

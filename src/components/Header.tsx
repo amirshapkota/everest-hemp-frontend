@@ -3,6 +3,7 @@ import { Search, ShoppingBag, Menu, X, User, Heart, LogOut, Home } from 'lucide-
 import { motion } from 'framer-motion';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useCart } from '../context/CartContext';
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -12,6 +13,8 @@ const Header = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const location = useLocation();
   const { user, logout } = useAuth();
+  const { cart } = useCart();
+  const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -175,7 +178,7 @@ const Header = () => {
               >
                 <ShoppingBag size={16} className="text-amber-900" />
                 <span className="absolute -top-1 -right-1 bg-amber-900 text-white text-xs rounded-full h-3 w-3 lg:h-4 lg:w-4 flex items-center justify-center text-[8px] lg:text-[10px]">
-                  2
+                  {cartCount}
                 </span>
               </motion.button>
             </Link>

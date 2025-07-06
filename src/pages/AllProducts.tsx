@@ -1,147 +1,49 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Filter, Grid, List, Heart } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
+import { useCategories } from '../context/CategoryContext';
+import NoProductsFound from '../components/NoProductsFound';
 
-// Combined products from both Women and Men collections
-const allProducts = [
-  // Women's Products
-  {
-    id: 1,
-    name: "Hemp Blazer",
-    price: "Rs. 289,000",
-    originalPrice: "Rs. 320,000",
-    image: "https://images.pexels.com/photos/1656684/pexels-photo-1656684.jpeg?auto=compress&cs=tinysrgb&w=600&h=800&fit=crop",
-    category: "Blazers",
-    collection: "Women",
-    isNew: true,
-    colors: ["Sage", "Charcoal", "Cream"]
-  },
-  {
-    id: 2,
-    name: "Organic Cotton Dress",
-    price: "Rs. 189,000",
-    image: "https://images.pexels.com/photos/1598505/pexels-photo-1598505.jpeg?auto=compress&cs=tinysrgb&w=600&h=800&fit=crop",
-    category: "Dresses",
-    collection: "Women",
-    colors: ["Natural", "Terracotta", "Forest"]
-  },
-  {
-    id: 3,
-    name: "Hemp Trousers",
-    price: "Rs. 159,000",
-    image: "https://images.pexels.com/photos/1656684/pexels-photo-1656684.jpeg?auto=compress&cs=tinysrgb&w=600&h=800&fit=crop",
-    category: "Trousers",
-    collection: "Women",
-    colors: ["Stone", "Olive", "Black"]
-  },
-  {
-    id: 4,
-    name: "Sustainable Cardigan",
-    price: "Rs. 129,000",
-    image: "https://images.pexels.com/photos/1598505/pexels-photo-1598505.jpeg?auto=compress&cs=tinysrgb&w=600&h=800&fit=crop",
-    category: "Knitwear",
-    collection: "Women",
-    colors: ["Cream", "Camel", "Sage"]
-  },
-  {
-    id: 5,
-    name: "Hemp Silk Blouse",
-    price: "Rs. 99,000",
-    image: "https://images.pexels.com/photos/1656684/pexels-photo-1656684.jpeg?auto=compress&cs=tinysrgb&w=600&h=800&fit=crop",
-    category: "Blouses",
-    collection: "Women",
-    colors: ["Ivory", "Blush", "Sage"]
-  },
-  {
-    id: 6,
-    name: "Organic Wool Coat",
-    price: "Rs. 389,000",
-    image: "https://images.pexels.com/photos/1598505/pexels-photo-1598505.jpeg?auto=compress&cs=tinysrgb&w=600&h=800&fit=crop",
-    category: "Outerwear",
-    collection: "Women",
-    colors: ["Camel", "Charcoal", "Cream"]
-  },
-  // Men's Products
-  {
-    id: 7,
-    name: "Hemp Suit Jacket",
-    price: "Rs. 329,000",
-    image: "https://images.pexels.com/photos/1040945/pexels-photo-1040945.jpeg?auto=compress&cs=tinysrgb&w=600&h=800&fit=crop",
-    category: "Suits",
-    collection: "Men",
-    isNew: true,
-    colors: ["Charcoal", "Navy", "Stone"]
-  },
-  {
-    id: 8,
-    name: "Organic Cotton Shirt",
-    price: "Rs. 89,000",
-    image: "https://images.pexels.com/photos/1040945/pexels-photo-1040945.jpeg?auto=compress&cs=tinysrgb&w=600&h=800&fit=crop",
-    category: "Shirts",
-    collection: "Men",
-    colors: ["White", "Blue", "Sage"]
-  },
-  {
-    id: 9,
-    name: "Hemp Chinos",
-    price: "Rs. 119,000",
-    image: "https://images.pexels.com/photos/1040945/pexels-photo-1040945.jpeg?auto=compress&cs=tinysrgb&w=600&h=800&fit=crop",
-    category: "Trousers",
-    collection: "Men",
-    colors: ["Khaki", "Navy", "Olive"]
-  },
-  {
-    id: 10,
-    name: "Sustainable Hoodie",
-    price: "Rs. 129,000",
-    image: "https://images.pexels.com/photos/1040945/pexels-photo-1040945.jpeg?auto=compress&cs=tinysrgb&w=600&h=800&fit=crop",
-    category: "Casual",
-    collection: "Men",
-    colors: ["Charcoal", "Forest", "Cream"]
-  },
-  {
-    id: 11,
-    name: "Hemp Polo Shirt",
-    price: "Rs. 69,000",
-    image: "https://images.pexels.com/photos/1040945/pexels-photo-1040945.jpeg?auto=compress&cs=tinysrgb&w=600&h=800&fit=crop",
-    category: "Shirts",
-    collection: "Men",
-    colors: ["Navy", "White", "Sage"]
-  },
-  {
-    id: 12,
-    name: "Organic Wool Sweater",
-    price: "Rs. 189,000",
-    image: "https://images.pexels.com/photos/1040945/pexels-photo-1040945.jpeg?auto=compress&cs=tinysrgb&w=600&h=800&fit=crop",
-    category: "Knitwear",
-    collection: "Men",
-    colors: ["Camel", "Charcoal", "Cream"]
-  }
-];
-
-const categories = ["All", "Blazers", "Dresses", "Trousers", "Knitwear", "Blouses", "Outerwear", "Suits", "Shirts", "Casual"];
 const collections = ["All", "Women", "Men"];
 const sortOptions = ["Featured", "Price: Low to High", "Price: High to Low", "Newest"];
 
 const AllProducts = () => {
+  const { categories, loading: categoriesLoading } = useCategories();
+  const [products, setProducts] = useState<any[]>([]);
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [selectedCollection, setSelectedCollection] = useState("All");
   const [sortBy, setSortBy] = useState("Featured");
   const [viewMode, setViewMode] = useState("grid");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const location = useLocation();
   
+  useEffect(() => {
+    setLoading(true);
+    fetch('/api/products')
+      .then(res => res.json())
+      .then(data => {
+        setProducts(data);
+        setLoading(false);
+      })
+      .catch(() => {
+        setError('Failed to load products');
+        setLoading(false);
+      });
+  }, []);
+
   // Get search query from URL params
   const searchParams = new URLSearchParams(location.search);
   const searchQuery = searchParams.get('q') || '';
 
-  const filteredProducts = allProducts.filter(product => {
+  const filteredProducts = products.filter(product => {
     const matchesCategory = selectedCategory === "All" || product.category === selectedCategory;
     const matchesCollection = selectedCollection === "All" || product.collection === selectedCollection;
     const matchesSearch = !searchQuery || 
       product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      product.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      product.collection.toLowerCase().includes(searchQuery.toLowerCase());
+      (product.category && product.category.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (product.collection && product.collection.toLowerCase().includes(searchQuery.toLowerCase()));
     return matchesCategory && matchesCollection && matchesSearch;
   });
 
@@ -149,11 +51,11 @@ const AllProducts = () => {
   const sortedProducts = [...filteredProducts].sort((a, b) => {
     switch (sortBy) {
       case "Price: Low to High":
-        return parseInt(a.price.replace(/[^0-9]/g, '')) - parseInt(b.price.replace(/[^0-9]/g, ''));
+        return a.price - b.price;
       case "Price: High to Low":
-        return parseInt(b.price.replace(/[^0-9]/g, '')) - parseInt(a.price.replace(/[^0-9]/g, ''));
+        return b.price - a.price;
       case "Newest":
-        return (b.isNew ? 1 : 0) - (a.isNew ? 1 : 0);
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
       default:
         return 0;
     }
@@ -243,19 +145,19 @@ const AllProducts = () => {
             <span className="text-sm font-medium text-amber-900 tracking-[0.1em] uppercase self-center mr-4 hidden sm:block">
               Category:
             </span>
-            {categories.map((category) => (
+            {categories.map((cat) => (
               <motion.button
-                key={category}
-                onClick={() => setSelectedCategory(category)}
+                key={cat.name}
+                onClick={() => setSelectedCategory(cat.name)}
                 className={`px-3 lg:px-6 py-2 lg:py-3 text-xs lg:text-sm font-medium tracking-[0.1em] uppercase transition-all duration-300 ${
-                  selectedCategory === category
+                  selectedCategory === cat.name
                     ? 'bg-amber-900 text-white shadow-lg'
                     : 'bg-white text-amber-900 border border-amber-900 hover:bg-amber-50'
                 }`}
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.98 }}
               >
-                {category}
+                {cat.name}
               </motion.button>
             ))}
           </div>
@@ -306,7 +208,7 @@ const AllProducts = () => {
         >
           {sortedProducts.map((product, index) => (
             <motion.div
-              key={product.id}
+              key={product._id}
               className="group cursor-pointer bg-white shadow-lg hover:shadow-2xl transition-all duration-500"
               initial={{ opacity: 0, y: 50 }}
               animate={{ opacity: 1, y: 0 }}
@@ -314,7 +216,7 @@ const AllProducts = () => {
               whileHover={{ y: -10 }}
               layout
             >
-              <Link to={`/product/${product.id}`}>
+              <Link to={`/product/${product._id}`}>
                 <div className="relative overflow-hidden">
                   {product.isNew && (
                     <div className="absolute top-2 left-2 lg:top-4 lg:left-4 bg-amber-900 text-white px-2 lg:px-3 py-1 text-xs tracking-[0.1em] uppercase z-10">
@@ -337,7 +239,7 @@ const AllProducts = () => {
                   </motion.button>
 
                   <motion.img
-                    src={product.image}
+                    src={product.images?.[0] || '/placeholder.jpg'}
                     alt={product.name}
                     className="w-full h-64 sm:h-80 lg:h-96 object-cover"
                     whileHover={{ scale: 1.08 }}
@@ -357,7 +259,7 @@ const AllProducts = () => {
                   
                   <div className="flex items-center space-x-2 lg:space-x-3 mb-3 lg:mb-4">
                     <span className="text-sm lg:text-lg font-medium text-amber-900 tracking-[0.05em]">
-                      {product.price}
+                      Rs. {product.price?.toLocaleString()}
                     </span>
                     {product.originalPrice && (
                       <span className="text-xs lg:text-sm text-stone-400 line-through">
@@ -367,7 +269,7 @@ const AllProducts = () => {
                   </div>
 
                   <div className="flex space-x-1 lg:space-x-2">
-                    {product.colors.map((color, colorIndex) => (
+                    {(product.colors || []).map((color: any, colorIndex: any) => (
                       <div
                         key={colorIndex}
                         className="w-3 h-3 lg:w-4 lg:h-4 rounded-full border border-stone-300"
@@ -399,46 +301,14 @@ const AllProducts = () => {
         </motion.div>
 
         {sortedProducts.length === 0 && (
-          <motion.div
-            className="text-center py-16"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.6 }}
-          >
-            <div className="mb-6">
-              <img 
-                src="/logo-nobg.png" 
-                alt="Everest Hemp" 
-                className="h-20 w-20 sm:h-24 sm:w-24 lg:h-28 lg:w-28 mx-auto opacity-60"
-              />
-            </div>
-            <h3 className="text-2xl font-light text-stone-600 mb-4 tracking-[0.1em]">
-              No products found
-            </h3>
-            <p className="text-stone-500 mb-8 max-w-md mx-auto">
-              {searchQuery 
-                ? `No products match your search for "${searchQuery}". Try different keywords or browse our collections.`
-                : "Try adjusting your filters to see more products."
-              }
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <button
-                onClick={() => {
-                  setSelectedCategory("All");
-                  setSelectedCollection("All");
-                  window.history.replaceState({}, '', '/all-products');
-                }}
-                className="bg-amber-900 text-white px-8 py-3 text-sm font-medium tracking-[0.2em] uppercase hover:bg-amber-800 transition-all duration-300 shadow-lg hover:shadow-xl"
-              >
-                Clear Filters
-              </button>
-              <Link to="/women">
-                <button className="border-2 border-amber-900 text-amber-900 px-8 py-3 text-sm font-medium tracking-[0.2em] uppercase hover:bg-amber-900 hover:text-white transition-all duration-300">
-                  Browse Women
-                </button>
-              </Link>
-            </div>
-          </motion.div>
+          <NoProductsFound
+            searchQuery={searchQuery}
+            onClearFilters={() => {
+              setSelectedCategory("All");
+              setSelectedCollection("All");
+              window.history.replaceState({}, '', '/all-products');
+            }}
+          />
         )}
 
         {/* Load More */}

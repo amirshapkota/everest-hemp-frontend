@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { CreditCard, Lock, MapPin, User, Mail, Phone, ArrowLeft, ArrowRight, Truck, Wallet, Banknote } from 'lucide-react';
+import { useCart } from '../context/CartContext';
+import { useAuth } from '../context/AuthContext';
 
 const Checkout = () => {
   const navigate = useNavigate();
@@ -33,28 +35,11 @@ const Checkout = () => {
     newsletter: false
   });
 
-  const cartItems = [
-    {
-      id: 1,
-      name: "Hemp Blazer",
-      price: 289000,
-      image: "https://images.pexels.com/photos/1656684/pexels-photo-1656684.jpeg?auto=compress&cs=tinysrgb&w=200&h=250&fit=crop",
-      color: "Sage",
-      size: "M",
-      quantity: 1
-    },
-    {
-      id: 2,
-      name: "Organic Cotton Dress",
-      price: 189000,
-      image: "https://images.pexels.com/photos/1598505/pexels-photo-1598505.jpeg?auto=compress&cs=tinysrgb&w=200&h=250&fit=crop",
-      color: "Natural",
-      size: "S",
-      quantity: 1
-    }
-  ];
+  const { cart, clearCart } = useCart();
+  const { user } = useAuth();
+  const [error, setError] = useState("");
 
-  const subtotal = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
   const shipping = formData.shippingMethod === 'express' ? 2500 : 0;
   const tax = subtotal * 0.13; // VAT in Nepal
   const total = subtotal + shipping + tax;
@@ -79,10 +64,63 @@ const Checkout = () => {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Process order
-    navigate('/order-confirmed');
+    setError("");
+    if (!user) {
+      setError("You must be logged in to place an order.");
+      return;
+    }
+    const token = localStorage.getItem('token');
+    if (!token) {
+      setError("Authentication token missing. Please log in again.");
+      return;
+    }
+    const orderPayload = {
+      user: user.id,
+      items: cart.map(item => ({
+        product: item.product,
+        name: item.name,
+        price: item.price,
+        quantity: item.quantity,
+        color: item.color,
+        size: item.size,
+        image: item.image
+      })),
+      shippingInfo: {
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        email: formData.email,
+        phone: formData.phone,
+        address: formData.address,
+        city: formData.city,
+        state: formData.state,
+        zipCode: formData.zipCode,
+        country: formData.country
+      },
+      paymentMethod: formData.paymentMethod,
+      shippingMethod: formData.shippingMethod,
+      total: total + (formData.paymentMethod === 'cod' ? 100 : 0),
+      orderNotes: formData.giftMessage
+    };
+    try {
+      const res = await fetch('/api/orders', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(orderPayload)
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.message || 'Order failed');
+      }
+      clearCart();
+      navigate('/order-confirmed');
+    } catch (err: any) {
+      setError(err.message || 'Order failed');
+    }
   };
 
   const steps = [
@@ -147,6 +185,12 @@ const Checkout = () => {
             ))}
           </div>
         </motion.div>
+
+        {error && (
+          <div className="mb-4 p-3 bg-red-100 text-red-800 border border-red-200 rounded">
+            {error}
+          </div>
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
           {/* Checkout Form */}
@@ -689,8 +733,8 @@ const Checkout = () => {
 
             {/* Cart Items */}
             <div className="space-y-3 lg:space-y-4 mb-4 lg:mb-6">
-              {cartItems.map((item) => (
-                <div key={item.id} className="flex items-center space-x-3 lg:space-x-4">
+              {cart.map((item) => (
+                <div key={item.product + item.size + item.color} className="flex items-center space-x-3 lg:space-x-4">
                   <img
                     src={item.image}
                     alt={item.name}

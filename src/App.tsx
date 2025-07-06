@@ -30,89 +30,95 @@ import AdminRoute from './components/AdminRoute';
 import AllProducts from './pages/AllProducts';
 import Checkout from './pages/Checkout';
 import OrderConfirmed from './pages/OrderConfirmed';
+import { CategoryProvider } from './context/CategoryContext';
+import { CartProvider } from './context/CartContext';
 
 function App() {
   return (
     <AuthProvider>
-      <Router>
-        <div className="min-h-screen">
-          <Header />
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/women" element={<Women />} />
-            <Route path="/men" element={<Men />} />
-            <Route path="/all-products" element={<AllProducts />} />
-            <Route path="/product/:id" element={<ProductDetail />} />
-            <Route path="/cart" element={<Cart />} />
-            <Route path="/checkout" element={<Checkout />} />
-            <Route path="/order-confirmed" element={<OrderConfirmed />} />
-            <Route path="/about" element={<About />} />
-            <Route path="/sustainability" element={<Sustainability />} />
-            <Route path="/contact" element={<Contact />} />
-            
-            {/* Auth Routes */}
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
-            <Route path="/forgot-password" element={<ForgotPassword />} />
-            
-            {/* User Dashboard Routes */}
-            <Route path="/dashboard" element={
-              <ProtectedRoute>
-                <UserDashboard />
-              </ProtectedRoute>
-            } />
-            <Route path="/profile" element={
-              <ProtectedRoute>
-                <UserProfile />
-              </ProtectedRoute>
-            } />
-            <Route path="/orders" element={
-              <ProtectedRoute>
-                <UserOrders />
-              </ProtectedRoute>
-            } />
-            <Route path="/wishlist" element={
-              <ProtectedRoute>
-                <UserWishlist />
-              </ProtectedRoute>
-            } />
-            
-            {/* Admin Routes */}
-            <Route path="/admin/login" element={<AdminLogin />} />
-            <Route path="/admin/dashboard" element={
-              <AdminRoute>
-                <AdminDashboard />
-              </AdminRoute>
-            } />
-            <Route path="/admin/orders" element={
-              <AdminRoute>
-                <AdminOrders />
-              </AdminRoute>
-            } />
-            <Route path="/admin/products" element={
-              <AdminRoute>
-                <AdminProducts />
-              </AdminRoute>
-            } />
-            <Route path="/admin/customers" element={
-              <AdminRoute>
-                <AdminCustomers />
-              </AdminRoute>
-            } />
-            <Route path="/admin/analytics" element={
-              <AdminRoute>
-                <AdminAnalytics />
-              </AdminRoute>
-            } />
-            <Route path="/admin/categories" element={
-              <AdminRoute>
-                <AdminCategories />
-              </AdminRoute>
-            } />
-          </Routes>
-          <Footer />
-        </div>
-      </Router>
+      <CategoryProvider>
+        <CartProvider>
+          <Router>
+            <div className="min-h-screen">
+              <Header />
+              <Routes>
+                <Route path="/" element={<Home />} />
+                <Route path="/women" element={<Women />} />
+                <Route path="/men" element={<Men />} />
+                <Route path="/all-products" element={<AllProducts />} />
+                <Route path="/product/:id" element={<ProductDetail />} />
+                <Route path="/cart" element={<Cart />} />
+                <Route path="/checkout" element={<Checkout />} />
+                <Route path="/order-confirmed" element={<OrderConfirmed />} />
+                <Route path="/about" element={<About />} />
+                <Route path="/sustainability" element={<Sustainability />} />
+                <Route path="/contact" element={<Contact />} />
+                
+                {/* Auth Routes */}
+                <Route path="/login" element={<Login />} />
+                <Route path="/register" element={<Register />} />
+                <Route path="/forgot-password" element={<ForgotPassword />} />
+                
+                {/* User Dashboard Routes */}
+                <Route path="/dashboard" element={
+                  <ProtectedRoute>
+                    <UserDashboard />
+                  </ProtectedRoute>
+                } />
+                <Route path="/profile" element={
+                  <ProtectedRoute>
+                    <UserProfile />
+                  </ProtectedRoute>
+                } />
+                <Route path="/orders" element={
+                  <ProtectedRoute>
+                    <UserOrders />
+                  </ProtectedRoute>
+                } />
+                <Route path="/wishlist" element={
+                  <ProtectedRoute>
+                    <UserWishlist />
+                  </ProtectedRoute>
+                } />
+                
+                {/* Admin Routes */}
+                <Route path="/admin/login" element={<AdminLogin />} />
+                <Route path="/admin/dashboard" element={
+                  <AdminRoute>
+                    <AdminDashboard />
+                  </AdminRoute>
+                } />
+                <Route path="/admin/orders" element={
+                  <AdminRoute>
+                    <AdminOrders />
+                  </AdminRoute>
+                } />
+                <Route path="/admin/products" element={
+                  <AdminRoute>
+                    <AdminProducts />
+                  </AdminRoute>
+                } />
+                <Route path="/admin/customers" element={
+                  <AdminRoute>
+                    <AdminCustomers />
+                  </AdminRoute>
+                } />
+                <Route path="/admin/analytics" element={
+                  <AdminRoute>
+                    <AdminAnalytics />
+                  </AdminRoute>
+                } />
+                <Route path="/admin/categories" element={
+                  <AdminRoute>
+                    <AdminCategories />
+                  </AdminRoute>
+                } />
+              </Routes>
+              <Footer />
+            </div>
+          </Router>
+        </CartProvider>
+      </CategoryProvider>
     </AuthProvider>
   );
 }

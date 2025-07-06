@@ -1,64 +1,68 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
+import { useAuth } from '../../context/AuthContext';
 import { Package, Truck, CheckCircle, Clock, Eye, Download, X, User, Mail, Phone, MapPin } from 'lucide-react';
 
+interface OrderItem {
+  product: string | { _id: string; name: string };
+  name: string;
+  price: number;
+  quantity: number;
+  color: string;
+  size: string;
+  image: string;
+}
+
+interface Order {
+  _id: string;
+  createdAt: string;
+  total: number;
+  items: OrderItem[];
+  shippingStatus?: string;
+  paymentMethod?: string;
+  paymentStatus?: string;
+}
+
 const UserOrders = () => {
+  const { user } = useAuth();
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const [selectedStatus, setSelectedStatus] = useState('All');
-  const [selectedOrder, setSelectedOrder] = useState(null);
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [showOrderModal, setShowOrderModal] = useState(false);
 
-  const orders = [
-    {
-      id: '#EH001',
-      date: '2024-01-15',
-      status: 'Delivered',
-      total: 289000,
-      items: [
-        { name: 'Hemp Blazer', size: 'M', color: 'Sage', price: 289000, image: 'https://images.pexels.com/photos/1656684/pexels-photo-1656684.jpeg?auto=compress&cs=tinysrgb&w=200&h=250&fit=crop' }
-      ],
-      tracking: 'EH123456789',
-      deliveryDate: '2024-01-18',
-      customerInfo: {
-        name: 'John Doe',
-        email: 'john@example.com',
-        phone: '+1 (555) 123-4567',
-        address: '123 Main St, Boulder, CO 80301'
+  useEffect(() => {
+    const fetchOrders = async () => {
+      setLoading(true);
+      setError("");
+      try {
+        const token = localStorage.getItem('token');
+        const res = await fetch(`/api/orders/user/${user?.id}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!res.ok) throw new Error('Failed to fetch orders');
+        const data = await res.json();
+        setOrders(data);
+      } catch (err: any) {
+        setError(err.message || 'Failed to fetch orders');
       }
-    },
-    {
-      id: '#EH002',
-      date: '2024-01-10',
-      status: 'Shipped',
-      total: 348000,
-      items: [
-        { name: 'Organic Cotton Dress', size: 'S', color: 'Natural', price: 189000, image: 'https://images.pexels.com/photos/1598505/pexels-photo-1598505.jpeg?auto=compress&cs=tinysrgb&w=200&h=250&fit=crop' },
-        { name: 'Hemp Trousers', size: 'S', color: 'Stone', price: 159000, image: 'https://images.pexels.com/photos/1656684/pexels-photo-1656684.jpeg?auto=compress&cs=tinysrgb&w=200&h=250&fit=crop' }
-      ],
-      tracking: 'EH123456790',
-      estimatedDelivery: '2024-01-20',
-      customerInfo: {
-        name: 'John Doe',
-        email: 'john@example.com',
-        phone: '+1 (555) 123-4567',
-        address: '123 Main St, Boulder, CO 80301'
-      }
-    },
-    {
-      id: '#EH003',
-      date: '2024-01-05',
-      status: 'Processing',
-      total: 129000,
-      items: [
-        { name: 'Sustainable Cardigan', size: 'M', color: 'Cream', price: 129000, image: 'https://images.pexels.com/photos/1598505/pexels-photo-1598505.jpeg?auto=compress&cs=tinysrgb&w=200&h=250&fit=crop' }
-      ],
-      customerInfo: {
-        name: 'John Doe',
-        email: 'john@example.com',
-        phone: '+1 (555) 123-4567',
-        address: '123 Main St, Boulder, CO 80301'
-      }
-    }
-  ];
+      setLoading(false);
+    };
+    if (user) fetchOrders();
+  }, [user]);
+
+  if (loading) return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+  if (error) return <div className="min-h-screen flex items-center justify-center text-red-600">{error}</div>;
+
+  if (orders.length === 0) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-stone-50 pt-20">
+        <h1 className="text-3xl font-light text-amber-900 mb-4 tracking-[0.1em]">You have no orders yet</h1>
+        <p className="text-lg text-stone-600 mb-8">Start shopping and your orders will appear here.</p>
+      </div>
+    );
+  }
 
   const statusOptions = ['All', 'Processing', 'Shipped', 'Delivered'];
 
@@ -82,9 +86,9 @@ const UserOrders = () => {
 
   const filteredOrders = selectedStatus === 'All' 
     ? orders 
-    : orders.filter(order => order.status === selectedStatus);
+    : orders.filter(order => order.shippingStatus === selectedStatus);
 
-  const handleViewOrder = (order) => {
+  const handleViewOrder = (order: Order) => {
     setSelectedOrder(order);
     setShowOrderModal(true);
   };
@@ -120,7 +124,7 @@ const UserOrders = () => {
                   Order Details
                 </h2>
                 <p className="text-stone-600 text-sm">
-                  {selectedOrder.id} • {new Date(selectedOrder.date).toLocaleDateString()}
+                  {selectedOrder._id} • {new Date(selectedOrder.createdAt).toLocaleDateString()}
                 </p>
               </div>
             </div>
@@ -143,120 +147,76 @@ const UserOrders = () => {
                 <div className="space-y-4">
                   <div className="flex justify-between items-center p-4 bg-stone-50 border border-stone-200">
                     <span className="text-stone-600">Order ID</span>
-                    <span className="font-medium text-amber-900">{selectedOrder.id}</span>
+                    <span className="font-medium text-amber-900">{selectedOrder._id}</span>
                   </div>
                   
                   <div className="flex justify-between items-center p-4 bg-stone-50 border border-stone-200">
                     <span className="text-stone-600">Status</span>
-                    <span className={`px-3 py-1 text-xs font-medium tracking-[0.05em] uppercase ${getStatusColor(selectedOrder.status)}`}>
-                      {selectedOrder.status}
+                    <span className={`px-3 py-1 text-xs font-medium tracking-[0.05em] uppercase ${getStatusColor(selectedOrder.shippingStatus || 'Processing')}`}>
+                      {selectedOrder.shippingStatus || 'Processing'}
                     </span>
                   </div>
                   
                   <div className="flex justify-between items-center p-4 bg-stone-50 border border-stone-200">
                     <span className="text-stone-600">Total Amount</span>
-                    <span className="font-medium text-amber-900">Rs. {selectedOrder.total.toLocaleString()}</span>
+                    <span className="font-medium text-amber-900">Rs. {selectedOrder.total?.toLocaleString()}</span>
                   </div>
                   
-                  <div className="flex justify-between items-center p-4 bg-stone-50 border border-stone-200">
+                  <div className="flex justify-between items-center p-4 bg-stone-50 border bordder-stone-200">
                     <span className="text-stone-600">Items</span>
                     <span className="font-medium text-amber-900">{selectedOrder.items.length} item{selectedOrder.items.length > 1 ? 's' : ''}</span>
                   </div>
                   
-                  {selectedOrder.tracking && (
+                  {selectedOrder.paymentMethod && (
                     <div className="flex justify-between items-center p-4 bg-stone-50 border border-stone-200">
-                      <span className="text-stone-600">Tracking Number</span>
-                      <span className="font-medium text-amber-900">{selectedOrder.tracking}</span>
+                      <span className="text-stone-600">Payment Method</span>
+                      <span className="font-medium text-amber-900">{selectedOrder.paymentMethod.toUpperCase()}</span>
+                    </div>
+                  )}
+                  
+                  {selectedOrder.paymentStatus && (
+                    <div className="flex justify-between items-center p-4 bg-stone-50 border border-stone-200">
+                      <span className="text-stone-600">Payment Status</span>
+                      <span className="font-medium text-amber-900">{selectedOrder.paymentStatus.toUpperCase()}</span>
                     </div>
                   )}
                 </div>
               </div>
 
-              {/* Customer Information */}
+              {/* Products */}
               <div>
                 <h3 className="text-xl font-light text-amber-900 mb-6 tracking-[0.1em]">
-                  Shipping Information
+                  Order Items
                 </h3>
                 
                 <div className="space-y-4">
-                  <div className="flex items-center space-x-3 p-4 bg-stone-50 border border-stone-200">
-                    <User size={18} className="text-amber-900" />
-                    <div>
-                      <p className="font-medium text-amber-900">{selectedOrder.customerInfo.name}</p>
-                      <p className="text-sm text-stone-600">Customer Name</p>
+                  {selectedOrder.items.map((item, index) => (
+                    <div key={index} className="flex items-center space-x-4 p-4 bg-stone-50 border border-stone-200">
+                      <div className="w-16 h-20 bg-stone-200 flex items-center justify-center">
+                        <img
+                          src={item.image}
+                          alt={item.name}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                      <div className="flex-1">
+                        <h4 className="font-medium text-amber-900">{item.name}</h4>
+                        <p className="text-sm text-stone-600">Size: {item.size} • Color: {item.color}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-medium text-amber-900">Rs. {item.price?.toLocaleString()}</p>
+                      </div>
                     </div>
-                  </div>
-                  
-                  <div className="flex items-center space-x-3 p-4 bg-stone-50 border border-stone-200">
-                    <Mail size={18} className="text-amber-900" />
-                    <div>
-                      <p className="font-medium text-amber-900">{selectedOrder.customerInfo.email}</p>
-                      <p className="text-sm text-stone-600">Email Address</p>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center space-x-3 p-4 bg-stone-50 border border-stone-200">
-                    <Phone size={18} className="text-amber-900" />
-                    <div>
-                      <p className="font-medium text-amber-900">{selectedOrder.customerInfo.phone}</p>
-                      <p className="text-sm text-stone-600">Phone Number</p>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-start space-x-3 p-4 bg-stone-50 border border-stone-200">
-                    <MapPin size={18} className="text-amber-900 mt-1" />
-                    <div>
-                      <p className="font-medium text-amber-900">{selectedOrder.customerInfo.address}</p>
-                      <p className="text-sm text-stone-600">Shipping Address</p>
-                    </div>
-                  </div>
+                  ))}
                 </div>
-              </div>
-            </div>
-
-            {/* Products */}
-            <div className="mt-8">
-              <h3 className="text-xl font-light text-amber-900 mb-6 tracking-[0.1em]">
-                Order Items
-              </h3>
-              
-              <div className="space-y-4">
-                {selectedOrder.items.map((item, index) => (
-                  <div key={index} className="flex items-center space-x-4 p-4 bg-stone-50 border border-stone-200">
-                    <div className="w-16 h-20 bg-stone-200 flex items-center justify-center">
-                      <img
-                        src={item.image}
-                        alt={item.name}
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                    <div className="flex-1">
-                      <h4 className="font-medium text-amber-900">{item.name}</h4>
-                      <p className="text-sm text-stone-600">Size: {item.size} • Color: {item.color}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-medium text-amber-900">Rs. {item.price.toLocaleString()}</p>
-                    </div>
-                  </div>
-                ))}
               </div>
             </div>
 
             {/* Action Buttons */}
             <div className="mt-8 flex flex-col sm:flex-row gap-4">
-              {selectedOrder.tracking && (
+              {selectedOrder.shippingStatus === 'Delivered' && (
                 <button 
-                  onClick={() => window.open(`https://track.example.com/${selectedOrder.tracking}`, '_blank')}
-                  className="flex-1 flex items-center justify-center space-x-2 bg-blue-600 text-white py-3 px-6 hover:bg-blue-700 transition-colors text-sm font-medium tracking-[0.1em] uppercase"
-                >
-                  <Truck size={16} />
-                  <span>Track Package</span>
-                </button>
-              )}
-              
-              {selectedOrder.status === 'Delivered' && (
-                <button 
-                  onClick={() => console.log('Download invoice:', selectedOrder.id)}
+                  onClick={() => console.log('Download invoice:', selectedOrder._id)}
                   className="flex-1 flex items-center justify-center space-x-2 bg-amber-900 text-white py-3 px-6 hover:bg-amber-800 transition-colors text-sm font-medium tracking-[0.1em] uppercase"
                 >
                   <Download size={16} />
@@ -265,7 +225,7 @@ const UserOrders = () => {
               )}
               
               <button 
-                onClick={() => console.log('Reorder items:', selectedOrder.id)}
+                onClick={() => console.log('Reorder items:', selectedOrder._id)}
                 className="flex-1 border border-amber-900 text-amber-900 py-3 px-6 hover:bg-amber-50 transition-colors text-sm font-medium tracking-[0.1em] uppercase"
               >
                 Reorder Items
@@ -276,6 +236,7 @@ const UserOrders = () => {
       </motion.div>
     );
   };
+
   return (
     <div className="min-h-screen bg-stone-50 pt-20">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -328,12 +289,12 @@ const UserOrders = () => {
 
         {/* Orders List */}
         <div className="space-y-6">
-          {filteredOrders.map((order, index) => {
-            const StatusIcon = getStatusIcon(order.status);
+          {filteredOrders.map((order: Order, index) => {
+            const StatusIcon = getStatusIcon(order.shippingStatus || 'Processing');
             
             return (
               <motion.div
-                key={order.id}
+                key={order._id}
                 className="bg-white shadow-lg border border-stone-200 overflow-hidden"
                 initial={{ opacity: 0, y: 30 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -347,21 +308,21 @@ const UserOrders = () => {
                         <StatusIcon size={20} className="text-amber-900" />
                         <div>
                           <h3 className="text-lg font-medium text-amber-900 tracking-[0.05em]">
-                            Order {order.id}
+                            Order {order._id.slice(-6).toUpperCase()}
                           </h3>
                           <p className="text-sm text-stone-600">
-                            Placed on {new Date(order.date).toLocaleDateString()}
+                            Placed on {new Date(order.createdAt).toLocaleDateString()}
                           </p>
                         </div>
                       </div>
                     </div>
                     
                     <div className="flex items-center space-x-4">
-                      <span className={`px-3 py-1 text-xs font-medium tracking-[0.05em] uppercase ${getStatusColor(order.status)}`}>
-                        {order.status}
+                      <span className={`px-3 py-1 text-xs font-medium tracking-[0.05em] uppercase ${getStatusColor(order.shippingStatus || 'Processing')}`}>
+                        {order.shippingStatus || 'Processing'}
                       </span>
                       <p className="text-lg font-medium text-amber-900">
-                        Rs. {order.total.toLocaleString()}
+                        Rs. {order.total?.toLocaleString()}
                       </p>
                     </div>
                   </div>
@@ -385,7 +346,7 @@ const UserOrders = () => {
                             Size: {item.size} • Color: {item.color}
                           </p>
                           <p className="text-sm font-medium text-amber-900">
-                            Rs. {item.price.toLocaleString()}
+                            Rs. {item.price?.toLocaleString()}
                           </p>
                         </div>
                       </div>
@@ -396,15 +357,7 @@ const UserOrders = () => {
                   <div className="mt-6 pt-6 border-t border-stone-200">
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
                       <div className="text-sm text-stone-600">
-                        {order.tracking && (
-                          <p>Tracking: <span className="font-medium text-amber-900">{order.tracking}</span></p>
-                        )}
-                        {order.deliveryDate && (
-                          <p>Delivered on {new Date(order.deliveryDate).toLocaleDateString()}</p>
-                        )}
-                        {order.estimatedDelivery && (
-                          <p>Estimated delivery: {new Date(order.estimatedDelivery).toLocaleDateString()}</p>
-                        )}
+                        {/* Remove or comment out any lines referencing order.estimatedDelivery */}
                       </div>
                       
                       <div className="flex space-x-3">
@@ -418,12 +371,12 @@ const UserOrders = () => {
                           <span>View Details</span>
                         </motion.button>
                         
-                        {order.status === 'Delivered' && (
+                        {order.shippingStatus === 'Delivered' && (
                           <motion.button
                             className="flex items-center space-x-2 px-4 py-2 bg-amber-900 text-white hover:bg-amber-800 transition-colors text-sm tracking-[0.05em]"
                             whileHover={{ scale: 1.05 }}
                             whileTap={{ scale: 0.98 }}
-                           onClick={() => console.log('Download invoice:', order.id)}
+                           onClick={() => console.log('Download invoice:', order._id)}
                           >
                             <Download size={16} />
                             <span>Invoice</span>
